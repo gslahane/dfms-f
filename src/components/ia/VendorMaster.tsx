@@ -3,16 +3,17 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
-import FundEnhancementList from './FundEnhancementList';
-import FundEnhancementForm from './FundEnhancementForm';
-import FundEnhancementMasterData from './FundEnhancementMasterData';
+import { Plus, Users, Shield, CheckCircle } from 'lucide-react';
+import VendorList from './VendorList';
+import VendorForm from './VendorForm';
+import VendorMasterData from './VendorMasterData';
+import VendorVerification from './VendorVerification';
 
-const FundEnhancement = () => {
+const VendorMaster = () => {
   const [showForm, setShowForm] = useState(false);
   const [activeTab, setActiveTab] = useState('list');
 
-  const handleNewRequest = () => {
+  const handleNewVendor = () => {
     setShowForm(true);
     setActiveTab('form');
   };
@@ -31,39 +32,45 @@ const FundEnhancement = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Fund Enhancement</h1>
-          <p className="text-gray-600">Manage fund enhancement requests and approvals</p>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Users className="h-8 w-8 text-primary" />
+            Vendor Management
+          </h1>
+          <p className="text-gray-600">Manage vendor information, verification, and relationships</p>
         </div>
-        <Button onClick={handleNewRequest}>
+        <Button onClick={handleNewVendor}>
           <Plus className="h-4 w-4 mr-2" />
-          New Enhancement Request
+          Add New Vendor
         </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="list">Enhancement List</TabsTrigger>
-          <TabsTrigger value="form">Enhancement Form</TabsTrigger>
-          <TabsTrigger value="master">Master Data</TabsTrigger>
+          <TabsTrigger value="list">Vendor List</TabsTrigger>
+          <TabsTrigger value="form">Add Vendor</TabsTrigger>
         </TabsList>
 
         <TabsContent value="list">
-          <FundEnhancementList />
+          <VendorList />
         </TabsContent>
 
         <TabsContent value="form">
-          <FundEnhancementForm 
+          <VendorForm 
             onCancel={handleFormCancel}
             onSubmit={handleFormSubmit}
           />
         </TabsContent>
 
+        <TabsContent value="verification">
+          <VendorVerification />
+        </TabsContent>
+
         <TabsContent value="master">
-          <FundEnhancementMasterData />
+          <VendorMasterData />
         </TabsContent>
       </Tabs>
     </div>
   );
 };
 
-export default FundEnhancement;
+export default VendorMaster;

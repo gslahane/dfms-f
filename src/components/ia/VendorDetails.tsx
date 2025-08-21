@@ -1,34 +1,18 @@
-
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { 
-  ArrowLeft, 
-  User, 
-  Phone, 
-  Mail, 
-  MapPin, 
-  Building, 
-  CreditCard, 
-  FileText, 
-  Calendar,
-  Star,
-  CheckCircle,
-  Clock,
-  XCircle
-} from 'lucide-react';
-import { Vendor } from './VendorList';
+import { ArrowLeft, Phone, Mail, MapPin, Building, CreditCard, Calendar, Star } from 'lucide-react';
+import { Vendor } from './VendorList'; // Import the interface
 
 interface VendorDetailsProps {
   vendor: Vendor;
   onBack: () => void;
-  formatCurrency: (amount: string) => string;
+  formatCurrency: (amount: number | null) => string;
 }
 
 const VendorDetails: React.FC<VendorDetailsProps> = ({ vendor, onBack, formatCurrency }) => {
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | null) => {
     switch (status) {
       case 'Active':
         return 'bg-green-100 text-green-800';
@@ -41,47 +25,21 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendor, onBack, formatCur
     }
   };
 
-  const getDocumentStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Verified':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'Pending':
-        return <Clock className="h-4 w-4 text-yellow-600" />;
-      case 'Rejected':
-        return <XCircle className="h-4 w-4 text-red-600" />;
-      default:
-        return <Clock className="h-4 w-4 text-gray-600" />;
-    }
-  };
-
-  const getContractStatusColor = (status: string) => {
-    switch (status) {
-      case 'Active':
-        return 'bg-green-100 text-green-800';
-      case 'Completed':
-        return 'bg-blue-100 text-blue-800';
-      case 'Terminated':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
+    <div className="w-full max-w-6xl mx-auto space-y-6 py-2">
+      <div className="flex items-center gap-2">
         <Button variant="outline" onClick={onBack}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to List
         </Button>
         <div>
-          <h1 className="text-2xl font-bold">{vendor.name}</h1>
+          <h1 className="text-2xl font-bold">{vendor.name || "N/A"}</h1>
           <p className="text-gray-600">Vendor Details</p>
         </div>
       </div>
 
-      {/* Basic Information */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Company Info */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -91,68 +49,67 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendor, onBack, formatCur
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-gray-500">Company Name</label>
-              <p className="text-sm mt-1">{vendor.name}</p>
+              <span className="text-sm font-medium text-gray-500">Company Name</span>
+              <p className="text-sm mt-1">{vendor.name || "N/A"}</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-500">Type</label>
-                <p className="text-sm mt-1">{vendor.type}</p>
+                <span className="text-sm font-medium text-gray-500">Type</span>
+                <p className="text-sm mt-1">{vendor.type || "-"}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Category</label>
-                <p className="text-sm mt-1">{vendor.category}</p>
+                <span className="text-sm font-medium text-gray-500">Category</span>
+                <p className="text-sm mt-1">{vendor.category || "-"}</p>
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-500">Status</label>
+              <span className="text-sm font-medium text-gray-500">Status</span>
               <div className="mt-1">
-                <Badge className={getStatusColor(vendor.status)}>{vendor.status}</Badge>
+                <Badge className={getStatusColor(vendor.status)}>{vendor.status || "N/A"}</Badge>
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-500">Performance Rating</label>
+              <span className="text-sm font-medium text-gray-500">Performance Rating</span>
               <div className="flex items-center mt-1">
-                <span className="text-sm font-medium">{vendor.performanceRating}</span>
+                <span className="text-sm font-medium">{vendor.performanceRating != null ? vendor.performanceRating : "-"}</span>
                 <Star className="h-4 w-4 text-yellow-500 ml-1" />
               </div>
             </div>
           </CardContent>
         </Card>
 
+        {/* Contact Info */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
+              <Phone className="h-5 w-5" />
               Contact Information
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-gray-500">Contact Person</label>
-              <p className="text-sm mt-1">{vendor.contactPerson}</p>
+              <span className="text-sm font-medium text-gray-500">Contact Person</span>
+              <p className="text-sm mt-1">{vendor.contactPerson || "-"}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-500">Phone</label>
+              <span className="text-sm font-medium text-gray-500">Phone</span>
               <p className="text-sm mt-1 flex items-center gap-2">
-                <Phone className="h-3 w-3" />
-                {vendor.phone}
+                {vendor.phone || "-"}
               </p>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-500">Email</label>
+              <span className="text-sm font-medium text-gray-500">Email</span>
               <p className="text-sm mt-1 flex items-center gap-2">
-                <Mail className="h-3 w-3" />
-                {vendor.email}
+                {vendor.email || "-"}
               </p>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-500">Address</label>
+              <span className="text-sm font-medium text-gray-500">Address</span>
               <p className="text-sm mt-1 flex items-start gap-2">
                 <MapPin className="h-3 w-3 mt-1" />
                 <span>
-                  {vendor.address}<br />
-                  {vendor.city}, {vendor.state} - {vendor.pincode}
+                  {vendor.address || "-"}<br />
+                  {vendor.city || "-"}, {vendor.state || "-"} - {vendor.pincode || "-"}
                 </span>
               </p>
             </div>
@@ -164,48 +121,28 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendor, onBack, formatCur
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
+            <Calendar className="h-5 w-5" />
             Legal Information
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label className="text-sm font-medium text-gray-500">GST Number</label>
-              <p className="text-sm mt-1 font-mono">{vendor.gstNumber}</p>
+              <span className="text-sm font-medium text-gray-500">GST Number</span>
+              <p className="text-sm mt-1 font-mono">{vendor.gstNumber || "-"}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-500">PAN Number</label>
-              <p className="text-sm mt-1 font-mono">{vendor.panNumber}</p>
+              <span className="text-sm font-medium text-gray-500">PAN Number</span>
+              <p className="text-sm mt-1 font-mono">{vendor.panNumber || "-"}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-500">Registration Date</label>
+              <span className="text-sm font-medium text-gray-500">Registration Date</span>
               <p className="text-sm mt-1 flex items-center gap-2">
                 <Calendar className="h-3 w-3" />
-                {new Date(vendor.registrationDate).toLocaleDateString('en-IN')}
+                {vendor.registrationDate
+                  ? new Date(vendor.registrationDate).toLocaleDateString('en-IN')
+                  : "-"}
               </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Financial Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            Financial Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="text-sm font-medium text-gray-500">Credit Limit</label>
-              <p className="text-lg font-semibold text-green-600 mt-1">₹{formatCurrency(vendor.creditLimit)}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-500">Payment Terms</label>
-              <p className="text-sm mt-1">{vendor.paymentTerms}</p>
             </div>
           </div>
         </CardContent>
@@ -214,101 +151,39 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendor, onBack, formatCur
       {/* Bank Details */}
       <Card>
         <CardHeader>
-          <CardTitle>Bank Details</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            Bank Details
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="text-sm font-medium text-gray-500">Account Number</label>
-              <p className="text-sm mt-1 font-mono">{vendor.bankDetails.accountNumber}</p>
+              <span className="text-sm font-medium text-gray-500">Account Number</span>
+              <p className="text-sm mt-1 font-mono">{vendor.bankAccountNumber || "-"}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-500">IFSC Code</label>
-              <p className="text-sm mt-1 font-mono">{vendor.bankDetails.ifsc}</p>
+              <span className="text-sm font-medium text-gray-500">IFSC Code</span>
+              <p className="text-sm mt-1 font-mono">{vendor.bankIfsc || "-"}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-500">Bank Name</label>
-              <p className="text-sm mt-1">{vendor.bankDetails.bankName}</p>
+              <span className="text-sm font-medium text-gray-500">Bank Name</span>
+              <p className="text-sm mt-1">{vendor.bankName || "-"}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-500">Branch</label>
-              <p className="text-sm mt-1">{vendor.bankDetails.branch}</p>
+              <span className="text-sm font-medium text-gray-500">Branch</span>
+              <p className="text-sm mt-1">{vendor.bankBranch || "-"}</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Documents */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Documents</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {vendor.documents.map((doc, index) => (
-              <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  {getDocumentStatusIcon(doc.status)}
-                  <div>
-                    <p className="font-medium">{doc.name}</p>
-                    <p className="text-sm text-gray-600">
-                      Uploaded: {new Date(doc.uploadDate).toLocaleDateString('en-IN')}
-                    </p>
-                  </div>
-                </div>
-                <Badge className={`${
-                  doc.status === 'Verified' ? 'bg-green-100 text-green-800' :
-                  doc.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-red-100 text-red-800'
-                }`}>
-                  {doc.status}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Contracts */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Active Contracts</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {vendor.contracts.map((contract) => (
-              <div key={contract.id} className="p-4 border rounded-lg">
-                <div className="flex justify-between items-start mb-2">
-                  <h4 className="font-medium">{contract.name}</h4>
-                  <Badge className={getContractStatusColor(contract.status)}>
-                    {contract.status}
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-500">Start Date:</span>
-                    <p>{new Date(contract.startDate).toLocaleDateString('en-IN')}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">End Date:</span>
-                    <p>{new Date(contract.endDate).toLocaleDateString('en-IN')}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Value:</span>
-                    <p className="font-semibold">₹{formatCurrency(contract.value)}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Separator />
-
-      {/* Update Information */}
+      {/* Update Info */}
       <div className="text-sm text-gray-600">
-        <p>Last updated on {new Date(vendor.lastUpdated).toLocaleDateString('en-IN')} by {vendor.updatedBy}</p>
+        <p>
+          Last updated on {vendor.lastUpdated ? new Date(vendor.lastUpdated).toLocaleDateString('en-IN') : "-"}
+          {vendor.updatedBy && <> by {vendor.updatedBy}</>}
+        </p>
       </div>
     </div>
   );

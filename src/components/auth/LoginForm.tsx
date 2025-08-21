@@ -1,77 +1,57 @@
 import React, { useState } from "react";
+import axios from "axios";
 import { Eye, EyeOff, User2, Lock } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext"; // <-- make sure this path is correct
-
-const DUMMY_USERS = [
-  {
-    username: "stateadmin",
-    password: "123",
-    role: "STATE_ADMIN",
-    name: "State Admin ",
-    department: "Planning & Finance",
-    district: "",
-    state_id: 1,
-  },
-  {
-    username: "districtadmin",
-    password: "123",
-    role: "DISTRICT_ADMIN",
-    name: "DISTRICT ADMIN",
-    department: "Collector Office,Pune",
-    district: "Pune",
-    district_id: 10,
-    state_id: 1,
-  },
-  {
-    username: "iaadmin",
-    password: "123",
-    role: "IA_ADMIN",
-    name: "IMPLEMENTING AGENCY",
-    department: "Rural Works Division",
-    district: "Pune",
-    ia_id: 1001,
-    district_id: 10,
-    state_id: 1,
-  },
-    {
-    username: "mla",
-    password: "123",
-    role: "MLA",
-    name: "Shri Ajit Pawar",
-    department: "MLA-Baramati Vidhansabha",
-    district: "Pune",
-    ia_id: 1001,
-    district_id: 10,
-    state_id: 1,
-  },
-
-];
+import { useAuth } from "@/contexts/AuthContext";
 
 interface LoginFormProps {
   onSuccess: () => void;
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
-  const { login } = useAuth(); // <-- use your context here!
+  const { login } = useAuth();
   const [formData, setFormData] = useState({ username: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    const user = DUMMY_USERS.find(
-      (u) =>
-        u.username === formData.username.trim() &&
-        u.password === formData.password
-    );
-    if (user) {
-      login(user);       // <-- This updates your context
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError("");
+  setLoading(true);
+
+  try {
+    const baseURL = import.meta.env.VITE_API_BASE_URL;
+    const res = await axios.post(`${baseURL}/api/auth/login`, {
+      username: formData.username.trim(),
+      password: formData.password,
+    });
+
+    // If API returns { token, mobile, agencyCode, role, designation }
+    if (res.data && res.data.token) {
+      const userData = {
+        token: res.data.token,
+        mobile: res.data.mobile,
+        agencyCode: res.data.agencyCode,
+        role: res.data.role,
+        designation: res.data.designation,
+        username: formData.username.trim(),
+      };
+      // Save token and user info using your AuthContext
+      login(userData);
       onSuccess();
     } else {
-      setError("Invalid username or password.");
+      setError("Invalid response from server.");
     }
-  };
+  } catch (err: any) {
+    setError(
+      err.response?.data?.message ||
+      "Invalid username or password. Please try again."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
@@ -149,8 +129,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
         <button
           type="submit"
           className="w-full py-2 bg-primary hover:bg-primary/90 text-white rounded-xl font-semibold text-lg shadow-md transition"
+          disabled={loading}
         >
-          Login
+          {loading ? "Logging in..." : "Login"}
         </button>
 
         <div className="mt-6 text-center text-xs text-gray-400">
@@ -160,5 +141,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     </div>
   );
 };
+
 
 export default LoginForm;

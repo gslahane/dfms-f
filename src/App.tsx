@@ -13,28 +13,23 @@ import WorkVendor from '@/components/ia/WorkVendor';
 import FundHistory from '@/components/sna/FundHistory'
 import MlaRegister from '@/components/sna/MlaRegister'
 import MlaFundDemand from '@/components/sna/MlaFundDemand'
-
 import DistrictDashboard from '@/components/dna/DistrictDashboard';
 import IaMaster from '@/components/dna/IaMaster';
 import WorkMaster from '@/components/dna/WorkMaster';
 import FundAllocation from '@/components/dna/FundAllocation';
-import FundAllocationSna from '@/components/sna/FundAllocation';
+import BudgetAllocation from '@/components/sna/BudgetAllocation';
 import UserManagement from '@/components/sna/FundDemand';
 import DepartmentManagement from '@/components/sna/DepartmentManagement';
 import FundApproval from '@/components/dna/FundApproval';
 import ReturnFunds from '@/components/dna/ReturnFunds';
-import VendorVerification from '@/components/dna/VendorVerification';
 import FundDisbursement from '@/components/ia/FundDisbursement';
-import VendorManagement from '@/components/ia/VendorManagement';
+import VendorMaster from '@/components/ia/VendorMaster';
 import ProjectApproval from '@/components/dna/SchemeMaster';
-import FundEnhancement from '@/components/ida/FundEnhancement';
 import NotFound from "./pages/NotFound";
 import Reports from '@/components/reports/Reports';
 import Settings from '@/components/settings/Settings';
 import TaxMaster from './components/tax-master/tax-master';
-import SchemeMaster from '@/components/dna/SchemeMaster';
-
-import Mladashbaord from '@/components/mla/mladashbaord'
+import ViewRecommendation from './components/sna/ViewRecommendation';
 
 const queryClient = new QueryClient();
 
@@ -77,13 +72,15 @@ const getRoleBasedRoutes = (user: any) => {
     case 'STATE_ADMIN':
       return [
         <Route key="dashboard" path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />,
-        <Route key="district-allocation" path="/district-allocation" element={<PrivateRoute><FundAllocationSna /></PrivateRoute>} />,
+        <Route key="budget-allocation" path="/budget-allocation" element={<PrivateRoute><BudgetAllocation /></PrivateRoute>} />,
         <Route key="district-management" path="/district-management" element={<PrivateRoute><DepartmentManagement /></PrivateRoute>} />,
-        <Route key="fund-demands" path="/fund-demands" element={<PrivateRoute><UserManagement /></PrivateRoute>} />,
+        // <Route key="fund-demands" path="/fund-demands" element={<PrivateRoute><UserManagement /></PrivateRoute>} />,
         <Route key="mla-fund-demands" path="/mla-fund-demands" element={<PrivateRoute>< MlaFundDemand/></PrivateRoute>} />,
-        <Route key="scheme-master" path="/scheme-master" element={<PrivateRoute><ProjectApproval /></PrivateRoute>} />,
+        // <Route key="scheme-master" path="/scheme-master" element={<PrivateRoute><ProjectApproval /></PrivateRoute>} />,
         <Route key="tax-master" path="/tax-master" element={<PrivateRoute><TaxMaster /></PrivateRoute>} />,
-        <Route key="dashboard" path="/mla-mlc-master" element={<PrivateRoute><MlaRegister /></PrivateRoute>} />,
+        <Route key="mla-master" path="/mla-mlc-master" element={<PrivateRoute><MlaRegister /></PrivateRoute>} />,
+
+
         <Route key="reports" path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />,
         <Route key="fund-history" path="/fund-history" element={<PrivateRoute><FundHistory /></PrivateRoute>} />,
         <Route key="settings" path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
@@ -94,6 +91,8 @@ const getRoleBasedRoutes = (user: any) => {
         <Route key="view-demands" path="/view-demands" element={<PrivateRoute><FundApproval /></PrivateRoute>} />,
         <Route key="fund-allocation" path="/fund-allocation" element={<PrivateRoute><FundAllocation /></PrivateRoute>} />,
         <Route key="ia-master" path="/ia-master" element={<PrivateRoute><IaMaster /></PrivateRoute>} />,
+        <Route key="mla-recommendation" path="/mla-mlc-recommendation" element={<PrivateRoute><ViewRecommendation /></PrivateRoute>} />,
+
         // <Route key="scheme-master" path="/scheme-master" element={<PrivateRoute><SchemeMaster /></PrivateRoute>} />,
         <Route key="work-master" path="/work-master" element={<PrivateRoute><WorkMaster /></PrivateRoute>} />,
         <Route key="reappropriation" path="/reappropriation" element={<PrivateRoute><ReturnFunds /></PrivateRoute>} />,
@@ -103,20 +102,7 @@ const getRoleBasedRoutes = (user: any) => {
       return [
         <Route key="dashboard" path="/iadashboard" element={<PrivateRoute><IaDashboard /></PrivateRoute>} />,
         <Route key="fund-demand" path="/fund-demand" element={<PrivateRoute><FundDisbursement /></PrivateRoute>} />,
-        <Route key="vendor-master" path="/vendor-master" element={<PrivateRoute><VendorManagement /></PrivateRoute>} />,
-        <Route key="work-vendor" path="/work-vendor" element={<PrivateRoute><WorkVendor /></PrivateRoute>} />,
-        <Route key="tax-master" path="/tax-master" element={<PrivateRoute><TaxMaster /></PrivateRoute>} />,
-        <Route key="reports" path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
-      ];
-       case 'MLA':
-      return [
-        <Route key="dashboard" path="/mla-dashboard" element={<PrivateRoute><Mladashbaord /></PrivateRoute>} />,
-      ];
-       case 'HADP':
-      return [
-        <Route key="dashboard" path="/iadashboard" element={<PrivateRoute><IaDashboard /></PrivateRoute>} />,
-        <Route key="fund-demand" path="/fund-demand" element={<PrivateRoute><FundDisbursement /></PrivateRoute>} />,
-        <Route key="vendor-master" path="/vendor-master" element={<PrivateRoute><VendorManagement /></PrivateRoute>} />,
+        <Route key="vendor-master" path="/vendor-master" element={<PrivateRoute><VendorMaster /></PrivateRoute>} />,
         <Route key="work-vendor" path="/work-vendor" element={<PrivateRoute><WorkVendor /></PrivateRoute>} />,
         <Route key="tax-master" path="/tax-master" element={<PrivateRoute><TaxMaster /></PrivateRoute>} />,
         <Route key="reports" path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />

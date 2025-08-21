@@ -196,7 +196,7 @@ const FundDemandForm = ({
               </div>
               {/* Demand Amount */}
               <div>
-                <label className="block mb-1 font-semibold text-gray-700">Demand Amount</label>
+                <label className="block mb-1 font-semibold text-gray-700">Work Portion Amount</label>
                 <Input
                   type="number"
                   min={1}

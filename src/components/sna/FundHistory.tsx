@@ -1,50 +1,49 @@
 // src/components/WorkDemandTable.tsx
-import React, { useState, useMemo, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { X, Eye } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "@/components/ui/select";
+import { ChevronRight, ChevronDown, Eye, FileDown, X, RefreshCcw, Search } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
+/* --------------------------------- Types --------------------------------- */
+type PlanType = "MLA" | "MLC";
+
 interface Work {
   id: number;
+  planType: PlanType;                 // NEW: Plan type for filtering
   workCode: string;
   name: string;
   district: string;
   constituency: string;
-  mlaName: string;
+  mlaName: string;                    // For MLC, this is the member's name too
   financialYear: string;
-  adminApprovedAmount: number;
+  adminApprovedAmount: number;        // Total Work Amount (admin approved)
   workPortionAmount: number;
   taxDeductionAmount: number;
-  vendor: {
-    id: string;
-    name: string;
-    aadhar: string;
-  };
+  vendor: { id: string; name: string; aadhar: string };
 }
 
 interface Demand {
   id: string;
   workId: number;
   amount: number;
-  date: string;
+  date: string; // yyyy-mm-dd
   status: "Pending" | "Approved";
   remarks: string;
 }
 
+/* ------------------------------ Mocked Data ------------------------------ */
 const works: Work[] = [
   {
     id: 467,
+    planType: "MLA",
     workCode: "ML/2425/2572",
-    name: "ML/2425/2572 आमदार स्थानिक विकास कार्यक्रम सन २०२४-२५ अंतर्गत बारामती येथे होणाऱ्या शिवछत्रपती राज्य स्तरीय कबड्डी स्पर्धेकरिता निधी उपलब्ध करणेबाबत",
+    name: "Baramati - State Level Kabaddi Tournament Support",
     district: "Pune",
     constituency: "Baramati",
     mlaName: "Ajit Anantrao Pawar",
@@ -52,33 +51,13 @@ const works: Work[] = [
     adminApprovedAmount: 2999,
     workPortionAmount: 2800,
     taxDeductionAmount: 100,
-    vendor: {
-      id: "1189",
-      name: "Shree Ganesh Constructions Pvt. Ltd.",
-      aadhar: "123412341234",
-    },
-  },
-  {
-    id: 468,
-    workCode: "ML/2425/2151",
-    name: "ML/2425/2151 जांबूत येथे जांबूत चोंभूत रोड ते कळमजाई मंदिर रस्ता करणे ता.शिरुर",
-    district: "Pune",
-    constituency: "Shirur",
-    mlaName: "Dnyaneshwar Katke",
-    financialYear: "2024-25",
-    adminApprovedAmount: 1400,
-    workPortionAmount: 1200,
-    taxDeductionAmount: 110,
-    vendor: {
-      id: "1189",
-      name: "Maratha Nirman & Co.",
-      aadhar: "987654321098",
-    },
+    vendor: { id: "1189", name: "Shree Ganesh Constructions Pvt. Ltd.", aadhar: "123412341234" },
   },
   {
     id: 469,
+    planType: "MLA",
     workCode: "ML/2425/2569",
-    name: "ML/2425/2569 आमदार स्थानिक विकास कार्यक्रम सन २०२४-२५ अंतर्गत बारामती येथे होणाऱ्या शिवछत्रपती राज्य स्तरीय कबड्डी स्पर्धेकरिता निधी उपलब्ध करणेबाबत",
+    name: "Baramati - State Level Kabaddi Tournament Support (Phase 2)",
     district: "Pune",
     constituency: "Baramati",
     mlaName: "Ajit Anantrao Pawar",
@@ -86,33 +65,13 @@ const works: Work[] = [
     adminApprovedAmount: 1990,
     workPortionAmount: 1800,
     taxDeductionAmount: 100,
-    vendor: {
-      id: "1189",
-      name: "Sadguru Infrastructure Ltd.",
-      aadhar: "456789123456",
-    },
-  },
-  {
-    id: 470,
-    workCode: "ML/2425/0325",
-    name: "ML/2425/0325 मौजे वेहेरगाव येथे भैरवनाथ मंदिरासमोरील ग्रामपंचायतीच्या मोकळ्या जागेत सभामंडप बांधणे.ता.मावळ.जि.पुणे ग्रामपंचायत वेहेरगाव मालमत्ता क्रमांक 120 Lat18.784103 Long73.465508",
-    district: "Pune",
-    constituency: "Maval",
-    mlaName: "Sunil Shankarrao Shelke",
-    financialYear: "2024-25",
-    adminApprovedAmount: 1600,
-    workPortionAmount: 1400,
-    taxDeductionAmount: 100,
-    vendor: {
-      id: "1189",
-      name: "Maharashtra Builders & Developers",
-      aadhar: "321098765432",
-    },
+    vendor: { id: "1189", name: "Sadguru Infrastructure Ltd.", aadhar: "456789123456" },
   },
   {
     id: 477,
+    planType: "MLA",
     workCode: "ML/2425/2561",
-    name: "ML/2425/2561 बारामती येथे आयोजित करण्यात येणा-या शिवछत्रपती राज्यस्तरीय कब्बडी स्पर्धेकरिता 10 लक्ष निधी देणे",
+    name: "Baramati - Kabaddi Tournament Grant",
     district: "Pune",
     constituency: "Baramati",
     mlaName: "Ajit Anantrao Pawar",
@@ -120,59 +79,166 @@ const works: Work[] = [
     adminApprovedAmount: 1000,
     workPortionAmount: 1000,
     taxDeductionAmount: 0,
-    vendor: {
-      id: "1189",
-      name: "Sahyadri Construction Co.",
-      aadhar: "147852369258",
-    },
+    vendor: { id: "1189", name: "Sahyadri Construction Co.", aadhar: "147852369258" },
+  },
+  {
+    id: 468,
+    planType: "MLA",
+    workCode: "ML/2425/2151",
+    name: "Shirur - Road to Kalamjai Mandir",
+    district: "Pune",
+    constituency: "Shirur",
+    mlaName: "Dnyaneshwar Katke",
+    financialYear: "2024-25",
+    adminApprovedAmount: 1400,
+    workPortionAmount: 1200,
+    taxDeductionAmount: 110,
+    vendor: { id: "1189", name: "Maratha Nirman & Co.", aadhar: "987654321098" },
+  },
+  {
+    id: 470,
+    planType: "MLA",
+    workCode: "ML/2425/0325",
+    name: "Maval - Sabha Mandap Construction",
+    district: "Pune",
+    constituency: "Maval",
+    mlaName: "Sunil Shankarrao Shelke",
+    financialYear: "2024-25",
+    adminApprovedAmount: 1600,
+    workPortionAmount: 1400,
+    taxDeductionAmount: 100,
+    vendor: { id: "1189", name: "Maharashtra Builders & Developers", aadhar: "321098765432" },
+  },
+  // Optional MLC sample to demonstrate Plan Type filter
+  {
+    id: 9001,
+    planType: "MLC",
+    workCode: "MLC/2425/0001",
+    name: "Pune Division – Library Renovation Grant",
+    district: "Pune",
+    constituency: "Pune Division",
+    mlaName: "Yogesh Tilekar",      // Member (MLC) name
+    financialYear: "2024-25",
+    adminApprovedAmount: 1200,
+    workPortionAmount: 1150,
+    taxDeductionAmount: 50,
+    vendor: { id: "V-9001", name: "Sahyog Infra", aadhar: "111122223333" },
   },
 ];
 
 const demands: Demand[] = [
-  { id: "MLD-467-1", workId: 467, amount: 500, date: "2025-02-01", status: "Pending",   remarks: "First Installment"  },
-  { id: "MLD-468-1", workId: 468, amount: 500, date: "2025-02-02", status: "Pending",   remarks: "First Installment"  },
-  { id: "MLD-469-1", workId: 469, amount: 500, date: "2025-02-03", status: "Pending",   remarks: "First Installment"  },
-  { id: "MLD-470-1", workId: 470, amount: 500, date: "2025-02-04", status: "Pending",   remarks: "First Installment"  },
-  { id: "MLD-473-1", workId: 473, amount: 500, date: "2025-02-05", status: "Pending",   remarks: "First Installment"  },
-  { id: "MLD-473-2", workId: 473, amount: 500, date: "2025-03-05", status: "Approved",  remarks: "Second Installment" },
-  { id: "MLD-474-1", workId: 474, amount: 500, date: "2025-02-06", status: "Pending",   remarks: "First Installment"  },
-  { id: "MLD-475-1", workId: 475, amount: 500, date: "2025-02-07", status: "Pending",   remarks: "First Installment"  },
-  { id: "MLD-475-2", workId: 475, amount: 500, date: "2025-03-07", status: "Approved",  remarks: "Second Installment" },
-  { id: "MLD-476-1", workId: 476, amount: 500, date: "2025-02-08", status: "Pending",   remarks: "First Installment"  },
-  { id: "MLD-476-2", workId: 476, amount: 500, date: "2025-03-08", status: "Approved",  remarks: "Second Installment" },
-  { id: "MLD-477-1", workId: 477, amount: 500, date: "2025-02-09", status: "Pending",   remarks: "First Installment"  },
-  { id: "MLD-477-2", workId: 477, amount: 500, date: "2025-03-09", status: "Approved",  remarks: "Second Installment" },
+  { id: "MLD-467-1", workId: 467, amount: 500, date: "2025-02-01", status: "Approved",  remarks: "First Installment" },
+  { id: "MLD-469-1", workId: 469, amount: 500, date: "2025-02-03", status: "Approved",  remarks: "First Installment" },
+  { id: "MLD-477-1", workId: 477, amount: 500, date: "2025-02-09", status: "Approved",  remarks: "First Installment" },
+  { id: "MLD-477-2", workId: 477, amount: 500, date: "2025-03-09", status: "Approved", remarks: "Second Installment" },
+  { id: "MLD-468-1", workId: 468, amount: 500, date: "2025-02-02", status: "Approved",  remarks: "First Installment" },
+  { id: "MLD-470-1", workId: 470, amount: 500, date: "2025-02-04", status: "Approved",  remarks: "First Installment" },
+  { id: "MLC-9001-1", workId: 9001, amount: 400, date: "2025-02-10", status: "Approved", remarks: "First Installment" },
 ];
 
+/* ------------------------------- Utilities ------------------------------- */
+const INR = (n: number | string) => "₹" + Number(n || 0).toLocaleString("en-IN");
+const maskAadhar = (a?: string) => (a ? a.replace(/^(\d{8})(\d{4})$/, "********$2") : "********0000");
+
+// Optional: MLA/MLC limits (fallback → sum of Work Amounts)
+const MEMBER_LIMITS: Record<string, number> = {
+  "Ajit Anantrao Pawar": 18000,
+  "Dnyaneshwar Katke": 18000,
+  "Sunil Shankarrao Shelke": 18000,
+  "Yogesh Tilekar": 18000,
+};
+
+/* -------------------------------- Component ------------------------------- */
 export default function WorkDemandTable() {
-  // filter state
-  const [fy, setFy] = useState("");
-  const [district, setDistrict] = useState("");
-  const [mla, setMla] = useState("");
-  const [open, setOpen] = useState<Demand | null>(null);
+  /* ------------------------------- Filters -------------------------------- */
+  const [fy, setFy] = useState<string>("");
+  const [planType, setPlanType] = useState<"" | PlanType>("");
+  const [district, setDistrict] = useState<string>("");
+  const [member, setMember] = useState<string>(""); // MLA/MLC name
+  const [applied, setApplied] = useState({ fy: "", planType: "" as "" | PlanType, district: "", member: "" });
+
+  const fyOptions        = useMemo(() => Array.from(new Set(works.map(w => w.financialYear))), []);
+  const planTypeOptions  = useMemo(() => Array.from(new Set(works.map(w => w.planType))), []);
+  const districtOptions  = useMemo(() => Array.from(new Set(works.map(w => w.district))), []);
+  const memberOptions    = useMemo(() => Array.from(new Set(works.map(w => w.mlaName))).sort(), []);
+
+  const applyFilters = () => setApplied({ fy, planType, district, member });
+  const resetFilters = () => {
+    setFy(""); setPlanType(""); setDistrict(""); setMember("");
+    setApplied({ fy: "", planType: "", district: "", member: "" });
+  };
+
+  /* ----------------------------- Filtered Data ---------------------------- */
+  const filteredWorks = useMemo(() => {
+    return works.filter(w =>
+      (!applied.fy || w.financialYear === applied.fy) &&
+      (!applied.planType || w.planType === applied.planType) &&
+      (!applied.district || w.district === applied.district) &&
+      (!applied.member || w.mlaName === applied.member)
+    );
+  }, [applied]);
+
+  const workIdSet = useMemo(() => new Set(filteredWorks.map(w => w.id)), [filteredWorks]);
+  const filteredDemands = useMemo(() => demands.filter(d => workIdSet.has(d.workId)), [workIdSet]);
+
+  /* ---------------------------- Grouped by Member ------------------------- */
+  const byMember = useMemo(() => {
+    const map = new Map<string, Work[]>();
+    for (const w of filteredWorks) {
+      const list = map.get(w.mlaName) || [];
+      list.push(w);
+      map.set(w.mlaName, list);
+    }
+    return map;
+  }, [filteredWorks]);
+
+  const memberSummary = useMemo(() => {
+    return Array.from(byMember.entries())
+      .map(([name, list]) => ({
+        name,
+        works: list,
+        noOfWorks: list.length,
+        totalWorkAmount: list.reduce((s, w) => s + (w.adminApprovedAmount || 0), 0),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
+  }, [byMember]);
+
+  /* ------------------------------- Expand UX ------------------------------ */
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const toggle = (name: string) => setExpanded(prev => ({ ...prev, [name]: !prev[name] }));
+
+  /* ------------------------------- Modals --------------------------------- */
+  const [voucherForWork, setVoucherForWork] = useState<Work | null>(null);
+  const [receipt, setReceipt] = useState<{ demand: Demand; work: Work } | null>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
 
-  // generate filter options
-  const fys       = useMemo(() => [...new Set(works.map(w => w.financialYear))], []);
-  const districts= useMemo(() => [...new Set(works.map(w => w.district))], []);
-  const mlas     = useMemo(() => [...new Set(works.map(w => w.mlaName))], []);
+  /* --------------------------- Export Functions --------------------------- */
+  const exportWorksCSVForMember = (name: string) => {
+    const list = byMember.get(name) || [];
+    const header = ["Member Name", "Plan Type", "Work Code", "Work Name", "District", "Constituency", "FY", "Total Work Amount"];
+    const rows = list.map(w => [name, w.planType, w.workCode, w.name, w.district, w.constituency, w.financialYear, w.adminApprovedAmount]);
+    const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${name.replace(/\s+/g, "_")}_works.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
 
-  // filtered demands
-  const filtered = useMemo(() => {
-    return demands.filter(d => {
-      const w = works.find(w => w.id === d.workId);
-      if (!w) return false;
-      return (
-        (!fy       || w.financialYear === fy) &&
-        (!district|| w.district === district) &&
-        (!mla      || w.mlaName === mla)
-      );
-    });
-  }, [fy, district, mla]);
+  const exportVouchersCSV = (work: Work) => {
+    const list = filteredDemands.filter(d => d.workId === work.id);
+    const header = ["Demand ID", "Amount", "Date", "Status", "Remarks", "Work Code", "Work Name", "Member", "Plan Type"];
+    const rows = list.map(d => [d.id, d.amount, d.date, d.status, d.remarks, work.workCode, work.name, work.mlaName, work.planType]);
+    const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${work.workCode}_vouchers.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
 
-  // PDF download
-  const downloadPDF = async () => {
-    if (!receiptRef.current || !open) return;
+  const downloadReceiptPDF = async () => {
+    if (!receiptRef.current || !receipt) return;
     const canvas = await html2canvas(receiptRef.current, { scale: 2 });
     const img = canvas.toDataURL("image/png");
     const pdf = new jsPDF({ unit: "pt", format: "a4" });
@@ -180,74 +246,212 @@ export default function WorkDemandTable() {
     const w = pdf.internal.pageSize.getWidth() - margin * 2;
     const h = (canvas.height * w) / canvas.width;
     pdf.addImage(img, "PNG", margin, margin, w, h);
-    pdf.save(`${open.id}.pdf`);
+    pdf.save(`${receipt.demand.id}.pdf`);
   };
 
-  const now = new Date();
-  const date = now.toLocaleDateString("en-GB");
-  const time = now.toLocaleTimeString("en-GB");
-
+  /* -------------------------------- Render -------------------------------- */
   return (
     <div className="p-6 space-y-6">
-      {/* Filters */}
+      {/* FILTER BAR */}
       <Card className="border rounded shadow-sm">
-        <CardHeader className="flex flex-wrap items-center gap-4">
-          <CardTitle className="flex-1 text-xl">MLA/MLC Fund Demands</CardTitle>
-          <div className="flex gap-3 flex-wrap">
-            <Select value={fy} onValueChange={setFy}>
-              <SelectTrigger className="w-32"><SelectValue placeholder="All FYs" /></SelectTrigger>
-              <SelectContent>
-                {fys.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={district} onValueChange={setDistrict}>
-              <SelectTrigger className="w-32"><SelectValue placeholder="All Districts" /></SelectTrigger>
-              <SelectContent>
-                {districts.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={mla} onValueChange={setMla}>
-              <SelectTrigger className="w-48"><SelectValue placeholder="All MLAs/MLCs" /></SelectTrigger>
-              <SelectContent>
-                {mlas.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+        <CardHeader className="pb-0">
+          <CardTitle className="text-lg">Filters</CardTitle>
         </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-12 gap-3 items-end">
+            <div className="col-span-12 sm:col-span-3">
+              <label className="text-xs font-medium mb-1 block">Financial Year</label>
+              <Select value={fy} onValueChange={setFy}>
+                <SelectTrigger><SelectValue placeholder="All FYs" /></SelectTrigger>
+                <SelectContent>
+                  {fyOptions.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
 
-        {/* Table */}
+            <div className="col-span-12 sm:col-span-3">
+              <label className="text-xs font-medium mb-1 block">Plan Type</label>
+              <Select value={planType} onValueChange={(v: PlanType | "") => setPlanType(v)}>
+                <SelectTrigger><SelectValue placeholder="All Types" /></SelectTrigger>
+                <SelectContent>
+                  {planTypeOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="col-span-12 sm:col-span-3">
+              <label className="text-xs font-medium mb-1 block">District</label>
+              <Select value={district} onValueChange={setDistrict}>
+                <SelectTrigger><SelectValue placeholder="All Districts" /></SelectTrigger>
+                <SelectContent>
+                  {districtOptions.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="col-span-12 sm:col-span-3">
+              <label className="text-xs font-medium mb-1 block">MLA/MLC</label>
+              <Select value={member} onValueChange={setMember}>
+                <SelectTrigger><SelectValue placeholder="All Members" /></SelectTrigger>
+                <SelectContent>
+                  {memberOptions.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="col-span-12 sm:col-span-6 flex gap-2">
+              <Button className="flex-1" onClick={applyFilters}>
+                <Search className="w-4 h-4 mr-2" /> Search
+              </Button>
+              <Button variant="outline" onClick={resetFilters}>
+                <RefreshCcw className="w-4 h-4 mr-2" /> Reset
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* TOP TABLE: Sr No | Mla Name | No of works | Total Work Amount | action (View more) */}
+      <Card className="border rounded shadow-sm">
+        <CardHeader className="pb-0">
+          <CardTitle className="text-lg">Transactions – Member Overview</CardTitle>
+        </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse">
               <thead className="bg-gray-50">
                 <tr>
-                  {["FY","District","MLA/MLC Name","Demand ID","Amount","Date","Status","Details"].map(col => (
-                    <th key={col} className="border px-3 py-2 text-left text-sm font-medium">{col}</th>
+                  {["Sr No", "Mla Name", "No of works", "Total Work Amount", "Action (View more)"].map(h => (
+                    <th key={h} className="border px-3 py-2 text-left text-xs font-semibold whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {memberSummary.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="py-6 text-center text-gray-500">No records.</td>
+                    <td className="border px-3 py-6 text-center text-sm text-gray-500" colSpan={5}>
+                      No records match the selected filters.
+                    </td>
                   </tr>
-                ) : filtered.map(d => {
-                  const w = works.find(w => w.id === d.workId)!;
+                )}
+
+                {memberSummary.map((row, idx) => {
+                  const isOpen = !!expanded[row.name];
                   return (
-                    <tr key={d.id} className="hover:bg-gray-50">
-                      <td className="border px-3 py-2 text-sm">{w.financialYear}</td>
-                      <td className="border px-3 py-2 text-sm">{w.district}</td>
-                      <td className="border px-3 py-2 text-sm">{w.mlaName}</td>
-                      <td className="border px-3 py-2 text-sm">{d.id}</td>
-                      <td className="border px-3 py-2 text-sm">₹{d.amount.toLocaleString()}</td>
-                      <td className="border px-3 py-2 text-sm">{d.date}</td>
-                      <td className="border px-3 py-2 text-sm">{d.status}</td>
-                      <td className="border px-3 py-2 text-center">
-                        <Button size="sm" variant="ghost" onClick={() => setOpen(d)}>
-                          <Eye className="w-4 h-4 text-blue-600" />
-                        </Button>
-                      </td>
-                    </tr>
+                    <React.Fragment key={row.name}>
+                      <tr className="hover:bg-gray-50">
+                        <td className="border px-3 py-2 text-xs">{idx + 1}</td>
+                        <td className="border px-3 py-2 text-xs">{row.name}</td>
+                        <td className="border px-3 py-2 text-xs">{row.noOfWorks}</td>
+                        <td className="border px-3 py-2 text-xs">{INR(row.totalWorkAmount)}</td>
+                        <td className="border px-3 py-2 text-xs">
+                          <Button size="sm" variant="outline" onClick={() => toggle(row.name)}>
+                            {isOpen ? <ChevronDown className="w-4 h-4 mr-2" /> : <ChevronRight className="w-4 h-4 mr-2" />}
+                            {isOpen ? "Hide" : "View more"}
+                          </Button>
+                        </td>
+                      </tr>
+
+                      {/* EXPANDED CONTENT UNDER MEMBER ROW */}
+                      {isOpen && (
+                        <tr>
+                          <td colSpan={5} className="p-0">
+                            <div className="p-4 border-t bg-white">
+                              {/* OVERVIEW CARDS: Mla Name | Total works | Total amount disbursed | MLa limit */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                <div className="rounded-md p-4 shadow-sm border-l-4 border-blue-500 bg-gradient-to-br from-blue-50 to-blue-100">
+                                  <p className="text-[11px] font-semibold text-blue-700 uppercase">Mla Name</p>
+                                  <p className="mt-1 text-base font-bold text-blue-900">{row.name}</p>
+                                </div>
+                                <div className="rounded-md p-4 shadow-sm border-l-4 border-violet-500 bg-gradient-to-br from-violet-50 to-violet-100">
+                                  <p className="text-[11px] font-semibold text-violet-700 uppercase">Total works</p>
+                                  <p className="mt-1 text-2xl font-bold text-violet-900">{row.noOfWorks}</p>
+                                </div>
+                                <div className="rounded-md p-4 shadow-sm border-l-4 border-emerald-500 bg-gradient-to-br from-emerald-50 to-emerald-100">
+                                  <p className="text-[11px] font-semibold text-emerald-700 uppercase">Total amount disbursed</p>
+                                  <p className="mt-1 text-xl font-bold text-emerald-900">
+                                    {INR(
+                                      filteredDemands
+                                        .filter(d => row.works.some(w => w.id === d.workId) && d.status === "Approved")
+                                        .reduce((s, d) => s + d.amount, 0)
+                                    )}
+                                  </p>
+                                </div>
+                                <div className="rounded-md p-4 shadow-sm border-l-4 border-amber-500 bg-gradient-to-br from-amber-50 to-amber-100">
+                                  <p className="text-[11px] font-semibold text-amber-700 uppercase">MLa limit</p>
+                                  <p className="mt-1 text-xl font-bold text-amber-900">
+                                    {INR(MEMBER_LIMITS[row.name] ?? row.totalWorkAmount)}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* INNER TABLE: Sr No | Work Name | Total No Of Demands | Total Amount Dirsbursed | Amount Pending | View Vouchers */}
+                              <div className="mt-4 overflow-x-auto">
+                                <div className="flex items-center justify-between mb-2">
+                                  <p className="text-xs text-gray-600">
+                                    Showing works under <span className="font-medium">{row.name}</span>
+                                  </p>
+                                  <Button variant="outline" size="sm" onClick={() => exportWorksCSVForMember(row.name)}>
+                                    <FileDown className="w-4 h-4 mr-2" /> Download Works CSV
+                                  </Button>
+                                </div>
+
+                                <table className="min-w-full border-collapse">
+                                  <thead className="bg-gray-50">
+                                    <tr>
+                                      {[
+                                        "Sr No",
+                                        "Work Name",
+                                        "Total No Of Demands",
+                                        "Total Amount Dirsbursed",
+                                        "Amount Pending",
+                                        "View Vouchers",
+                                      ].map(h => (
+                                        <th key={h} className="border px-3 py-2 text-left text-xs font-semibold whitespace-nowrap">{h}</th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {row.works.map((w, i) => {
+                                      const ds = filteredDemands.filter(d => d.workId === w.id);
+                                      const totalDemands = ds.length;
+                                      const disbursed = ds.filter(d => d.status === "Approved").reduce((s, d) => s + d.amount, 0);
+                                      const pending = ds.filter(d => d.status === "Pending").reduce((s, d) => s + d.amount, 0);
+                                      return (
+                                        <tr key={w.id} className="hover:bg-gray-50">
+                                          <td className="border px-3 py-2 text-xs">{i + 1}</td>
+                                          <td className="border px-3 py-2 text-xs">
+                                            <div className="font-medium">{w.name}</div>
+                                            <div className="text-[11px] text-gray-500">
+                                              <span className="font-mono">{w.workCode}</span> • {w.constituency}, {w.district} • {w.planType}
+                                            </div>
+                                          </td>
+                                          <td className="border px-3 py-2 text-xs">{totalDemands}</td>
+                                          <td className="border px-3 py-2 text-xs">{INR(disbursed)}</td>
+                                          <td className="border px-3 py-2 text-xs">{INR(pending)}</td>
+                                          <td className="border px-3 py-2 text-xs">
+                                            <Button size="sm" variant="outline" onClick={() => setVoucherForWork(w)}>
+                                              <Eye className="w-4 h-4 mr-2" /> View Vouchers
+                                            </Button>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                    {row.works.length === 0 && (
+                                      <tr>
+                                        <td className="border px-3 py-4 text-center text-sm text-gray-500" colSpan={6}>
+                                          No works under this member for selected filters.
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
@@ -256,108 +460,157 @@ export default function WorkDemandTable() {
         </CardContent>
       </Card>
 
-      {/* Receipt Modal */}
-{open && (
-  <div
-    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-    onClick={() => setOpen(null)}
-  >
-    <div
-      ref={receiptRef}
-      className="relative bg-white rounded-md shadow-lg w-full max-w-3xl p-6 space-y-4 text-sm"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Close Button */}
-      <button
-        onClick={() => setOpen(null)}
-        className="absolute top-3 right-3 p-1 hover:bg-gray-100 rounded-full"
-      >
-        <X size={18} />
-      </button>
-
-      {/* Header */}
-      <div className="text-center space-y-1">
-        <img src="./logo.png" alt="Gov Seal" className="h-12 mx-auto" />
-        <h2 className="text-base font-bold">Government of Maharashtra</h2>
-        <p className="text-xs text-gray-600 -mt-1">Finance Department</p>
-        <p className="text-xs font-medium">Work Payment Receipt</p>
-      </div>
-
-      {/* Voucher Meta */}
-      <div className="flex justify-between text-xs text-gray-700 border-y py-1">
-        <span><strong>Voucher ID:</strong> {open.id}</span>
-        <span><strong>Date:</strong> {new Date().toLocaleDateString("en-IN")}</span>
-        <span><strong>Time:</strong> {new Date().toLocaleTimeString("en-IN")}</span>
-      </div>
-
-      {/* Main Grid */}
-      {(() => {
-        const w = works.find(w => w.id === open.workId)!;
-        const deductions = w.taxDeductionAmount || 0;
-        const gross = open.amount + deductions;
-
-        const toWords = (num: number) => {
-          // Replace with proper words conversion if needed
-          return num.toLocaleString("en-IN") + " Rupees Only";
-        };
-
-        return (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <div className="border rounded p-3 bg-gray-50">
-                <p><strong>FY:</strong> {w.financialYear}</p>
-                <p><strong>District:</strong> {w.district}</p>
-                <p><strong>Scheme:</strong> {w.scheme || "N/A"}</p>
-                <p><strong>Work Title:</strong> {w.name}</p>
-                <p><strong>IA Name:</strong> {w.implementingAgency || "N/A"}</p>
+      {/* VOUCHERS MODAL (Demands & vouchers list with download options) */}
+      {voucherForWork && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setVoucherForWork(null)}>
+          <div className="bg-white rounded-md shadow-lg w-full max-w-4xl p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-base font-semibold">Vouchers – {voucherForWork.name}</h3>
+                <p className="text-xs text-gray-600">
+                  Work Code: <span className="font-mono">{voucherForWork.workCode}</span> • Member: {voucherForWork.mlaName} • {voucherForWork.planType}
+                </p>
               </div>
-              <div className="border rounded p-3 bg-gray-50">
-                <p><strong>Admin Approved Amount:</strong> ₹{w.adminApprovedAmount.toLocaleString()}</p>
-                <p><strong>Gross Work Order:</strong> ₹{gross.toLocaleString()}</p>
-                <p><strong>Previously Released:</strong> ₹{w.fundsReleasedBefore?.toLocaleString() || "0"}</p>
-                <p><strong>Disbursed Now:</strong> ₹{open.amount.toLocaleString()}</p>
-                <p><strong>Amount in Words:</strong> {toWords(open.amount)}</p>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => exportVouchersCSV(voucherForWork)}>
+                  <FileDown className="w-4 h-4 mr-2" /> Export CSV
+                </Button>
+                <button className="p-1 rounded hover:bg-gray-100" aria-label="Close" onClick={() => setVoucherForWork(null)}>
+                  <X size={18} />
+                </button>
               </div>
             </div>
 
-            {/* Vendor + Bank Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <div className="border rounded p-3 bg-gray-50">
-                <p><strong>Vendor:</strong> {w.vendor.name}</p>
-                <p><strong>Aadhar:</strong> {w.vendor.aadhar}</p>
-                <p><strong>Account Number:</strong> ********1234</p>
+            {/* Small overview inside modal */}
+            {(() => {
+              const list = filteredDemands.filter(d => d.workId === voucherForWork.id);
+              const disbursed = list.filter(d => d.status === "Approved").reduce((s, d) => s + d.amount, 0);
+              const pending   = list.filter(d => d.status === "Pending").reduce((s, d) => s + d.amount, 0);
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                  <div className="rounded-md p-3 shadow-sm border-l-4 border-emerald-500 bg-gradient-to-br from-emerald-50 to-emerald-100">
+                    <p className="text-[11px] font-semibold text-emerald-700 uppercase">Total Amount Dirsbursed</p>
+                    <p className="mt-1 text-lg font-bold text-emerald-900">{INR(disbursed)}</p>
+                  </div>
+                  <div className="rounded-md p-3 shadow-sm border-l-4 border-amber-500 bg-gradient-to-br from-amber-50 to-amber-100">
+                    <p className="text-[11px] font-semibold text-amber-700 uppercase">Amount Pending</p>
+                    <p className="mt-1 text-lg font-bold text-amber-900">{INR(pending)}</p>
+                  </div>
+                  <div className="rounded-md p-3 shadow-sm border-l-4 border-blue-500 bg-gradient-to-br from-blue-50 to-blue-100">
+                    <p className="text-[11px] font-semibold text-blue-700 uppercase">Vendor</p>
+                    <p className="mt-1 text-sm font-semibold text-blue-900">{voucherForWork.vendor.name}</p>
+                    <p className="text-[11px] text-blue-700/70">Aadhar: {maskAadhar(voucherForWork.vendor.aadhar)}</p>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {["Demand ID", "Amount", "Date", "Status", "Remarks", "Receipt"].map(h => (
+                      <th key={h} className="border px-3 py-2 text-left text-xs font-semibold whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredDemands.filter(d => d.workId === voucherForWork.id).map(d => (
+                    <tr key={d.id} className="hover:bg-gray-50">
+                      <td className="border px-3 py-2 text-xs font-mono">{d.id}</td>
+                      <td className="border px-3 py-2 text-xs">{INR(d.amount)}</td>
+                      <td className="border px-3 py-2 text-xs">{d.date}</td>
+                      <td className="border px-3 py-2 text-xs">
+                        <Badge variant={d.status === "Approved" ? "default" : "secondary"}>{d.status}</Badge>
+                      </td>
+                      <td className="border px-3 py-2 text-xs">{d.remarks}</td>
+                      <td className="border px-3 py-2 text-xs">
+                        <Button size="sm" variant="outline" onClick={() => setReceipt({ demand: d, work: voucherForWork })}>
+                          <Eye className="w-4 h-4 mr-2" /> View / PDF
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredDemands.filter(d => d.workId === voucherForWork.id).length === 0 && (
+                    <tr><td className="border px-3 py-4 text-center text-sm text-gray-500" colSpan={6}>No vouchers.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RECEIPT MODAL (per voucher PDF) */}
+      {receipt && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setReceipt(null)}>
+          <div className="bg-white rounded-md shadow-lg w-full max-w-3xl p-6 relative" onClick={e => e.stopPropagation()}>
+            <button className="absolute top-3 right-3 p-1 hover:bg-gray-100 rounded-full" onClick={() => setReceipt(null)} aria-label="Close">
+              <X size={18} />
+            </button>
+
+            <div ref={receiptRef} className="space-y-4 text-sm">
+              {/* Header */}
+              <div className="text-center space-y-1">
+                <img src="./logo.png" alt="Gov Seal" className="h-12 mx-auto" />
+                <h2 className="text-base font-bold">Government of Maharashtra</h2>
+                <p className="text-xs text-gray-600 -mt-1">Finance Department</p>
+                <p className="text-xs font-medium">Work Payment Receipt</p>
               </div>
-              <div className="border rounded p-3 bg-gray-50">
-                <p><strong>Bank:</strong> State Bank of India</p>
-                <p><strong>IFSC:</strong> SBIN0000456</p>
-                <p><strong>UTR No:</strong> UTR20250717001</p>
+
+              {/* Meta */}
+              <div className="flex justify-between text-xs text-gray-700 border-y py-1">
+                <span><strong>Voucher ID:</strong> {receipt.demand.id}</span>
+                <span><strong>Date:</strong> {new Date().toLocaleDateString("en-IN")}</span>
+                <span><strong>Time:</strong> {new Date().toLocaleTimeString("en-IN")}</span>
+              </div>
+
+              {/* Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="border rounded p-3 bg-gray-50">
+                  <p><strong>Work Code:</strong> <span className="font-mono">{receipt.work.workCode}</span></p>
+                  <p><strong>Work Title:</strong> {receipt.work.name}</p>
+                  <p><strong>Member:</strong> {receipt.work.mlaName} • {receipt.work.planType}</p>
+                  <p><strong>District:</strong> {receipt.work.district}</p>
+                  <p><strong>Constituency:</strong> {receipt.work.constituency}</p>
+                </div>
+                <div className="border rounded p-3 bg-gray-50">
+                  <p><strong>Admin Approved Amount:</strong> {INR(receipt.work.adminApprovedAmount)}</p>
+                  <p><strong>Disbursed Now:</strong> {INR(receipt.demand.amount)}</p>
+                  <p><strong>Status:</strong> {receipt.demand.status}</p>
+                  <p><strong>Remarks:</strong> {receipt.demand.remarks}</p>
+                </div>
+              </div>
+
+              {/* Vendor */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="border rounded p-3 bg-gray-50">
+                  <p><strong>Vendor:</strong> {receipt.work.vendor.name}</p>
+                  <p><strong>Aadhar:</strong> {maskAadhar(receipt.work.vendor.aadhar)}</p>
+                </div>
+                <div className="border rounded p-3 bg-gray-50">
+                  <p><strong>Bank:</strong> State Bank of India</p>
+                  <p><strong>IFSC:</strong> SBIN0000456</p>
+                  <p><strong>UTR No:</strong> UTR20250717001</p>
+                </div>
+              </div>
+
+              {/* Signature */}
+              <div className="pt-3 border-t text-right text-xs">
+                <p className="text-gray-600">Authorized Signatory</p>
+                <div className="h-10 border-b w-40 ml-auto mt-1" />
               </div>
             </div>
-          </>
-        );
-      })()}
 
-      {/* Signature */}
-      <div className="pt-3 border-t text-right text-xs">
-        <p className="text-gray-600">Authorized Signatory</p>
-        <div className="h-10 border-b w-40 ml-auto mt-1" />
-      </div>
-
-      {/* Buttons */}
-      <div className="flex justify-end gap-2 text-xs">
-        <Button variant="outline" size="sm" onClick={() => setOpen(null)}>
-          Close
-        </Button>
-        <Button size="sm" onClick={downloadPDF}>
-          Download PDF
-        </Button>
-      </div>
-    </div>
-  </div>
-)}
-
-
-
+            <div className="flex justify-end gap-2 mt-3">
+              <Button variant="outline" size="sm" onClick={() => setReceipt(null)}>Close</Button>
+              <Button size="sm" onClick={downloadReceiptPDF}>
+                <FileDown className="w-4 h-4 mr-2" /> Download PDF
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

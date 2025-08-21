@@ -18,11 +18,12 @@ import {
 const SIDEBAR_CONFIG = {
   STATE_ADMIN: [
     { path: '/dashboard',            icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/district-allocation',  icon: IndianRupee,     label: 'District Budget Allocation' },
-    { path: '/fund-demands',         icon: Users,           label: 'View District Fund Demands' },
-    { path: '/mla-fund-demands',     icon: IndianRupee,           label: 'View Mla Fund Demands' },
-
-    { path: '/scheme-master',        icon: FileText,        label: 'Scheme Master' },
+    { path: '/budget-allocation',  icon: CreditCard,     label: 'Budget Allocation' },
+    // { path: '/fund-demands',         icon: Users,           label: 'View District Fund Demands' },
+    { path: '/mla-fund-demands',     icon: IndianRupee,           label: 'View Fund Demands' },
+    
+    // { path: '/scheme-master',        icon: FileText,        label: 'Scheme Master' },
+    { path: '/mla-mlc-master',        icon: Users,        label: 'MLA|MLC Master' },
     { path: '/district-management',  icon: Building2,       label: 'District Master' },
     { path: '/fund-history',         icon: ArrowLeftRight,        label: 'Vouchers' },
     { path: '/reports',              icon: BarChart3,       label: 'Reports' }
@@ -30,6 +31,8 @@ const SIDEBAR_CONFIG = {
   DISTRICT_ADMIN: [
     { path: '/district-dashboard',   icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/view-demands',         icon: CheckCircle,     label: 'View IA Demands' },
+    { path: '/mla-mlc-recommendation', icon: IndianRupee,           label: 'View Mla Recommendation' },
+
     { path: '/fund-allocation',      icon: IndianRupee,     label: 'Budget Sanctioned to Schemes' },
     // { path: '/scheme-master',        icon: FileText,        label: 'Scheme Master' },
     { path: '/ia-master',            icon: Users,           label: 'IA Master' },
