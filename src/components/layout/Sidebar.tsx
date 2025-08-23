@@ -46,22 +46,19 @@ const SIDEBAR_CONFIG = {
   ],
 
   MLA: [
-    { path: '/mla-dashboard',        icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/recommend-work',       icon: IndianRupee,     label: 'Recommend Work' },
-    { path: '/reports',              icon: BarChart3,       label: 'Reports' }
+    { path: '/mla/dashboard',        icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/mla/view-recommendation',       icon: IndianRupee,     label: 'Recommend Work' },
+    { path: '/mla/reports',              icon: BarChart3,       label: 'Reports' }
   ],
 
   MLC: [
-    { path: '/mlc-dashboard',        icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/recommend-work',       icon: IndianRupee,     label: 'Recommend Work' },
-    { path: '/reports',              icon: BarChart3,       label: 'Reports' }
+    { path: '/mlc/dashboard',        icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/mlc/view-recommendation',       icon: IndianRupee,     label: 'Recommend Work' },
+    { path: '/mlc/reports',              icon: BarChart3,       label: 'Reports' }
   ],
 
-  CONTRACTOR: [
-    { path: '/contractor-dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/assigned-works',       icon: FileText,        label: 'Assigned Works' },
-    { path: '/fund-releases',        icon: IndianRupee,     label: 'Fund Releases' },
-    { path: '/reports',              icon: BarChart3,       label: 'Reports' }
+  VENDOR: [
+    { path: '/vendor/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   ]
 };
 

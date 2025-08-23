@@ -3,7 +3,7 @@ import React from 'react'
 function viewWorks() {
   return (
     <div>
-      
+      hi
     </div>
   )
 }

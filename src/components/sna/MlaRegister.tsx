@@ -1,5 +1,5 @@
 // src/components/MlaMaster.tsx
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Card, CardHeader, CardTitle, CardContent,
@@ -16,311 +16,6 @@ import { ChevronsUpDown, Check, Pencil } from "lucide-react";
 // Searchable combobox bits (shadcn/ui)
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
-
-/* ----------------------------------------------------------------------------
- * UPDATED MOCK: mlaMlcData (now includes phone & email)
- * -------------------------------------------------------------------------- */
-const mlaMlcData = {
-  financialYear: "2024-2025",
-  planType: "ML",
-  data: [
-    {
-      district: "PUNE",
-      taluka: "Pimpri",
-      type: "MLA",
-      term: 15,
-      name: "Anna Dadu Bansode",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 20000,
-      phone: "9876500010",
-      email: "anna.bansode@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Baramati",
-      type: "MLA",
-      term: 15,
-      name: "Ajit Anantrao Pawar",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 10000,
-      phone: "9876500020",
-      email: "ajit.pawar@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Khed Alandi",
-      type: "MLA",
-      term: 15,
-      name: "Babaji Ramchandra Kale",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 10000,
-      phone: "9876500030",
-      email: "babaji.kale@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Vadgaon Sheri",
-      type: "MLA",
-      term: 15,
-      name: "Bapusaheb Tukaram Pathare",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 0,
-      phone: "9876500040",
-      email: "bapusaheb.pathare@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Khadakwasala",
-      type: "MLA",
-      term: 15,
-      name: "Bhimrao Dhondiba Tapkir",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 0,
-      phone: "9876500050",
-      email: "bhimrao.tapkir@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Bhosari",
-      type: "MLA",
-      term: 15,
-      name: "Mahesh Landge",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 0,
-      phone: "9876500060",
-      email: "mahesh.landge@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Hadapsar",
-      type: "MLA",
-      term: 15,
-      name: "Chetan Tupe",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 0,
-      phone: "9876500070",
-      email: "chetan.tupe@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Kothrud",
-      type: "MLA",
-      term: 15,
-      name: "Chandrakant Bachhu Patil",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 0,
-      phone: "9876500080",
-      email: "chandrakant.patil@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Indapur",
-      type: "MLA",
-      term: 15,
-      name: "Dattatraya Vithoba Bharne",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 0,
-      phone: "9876500090",
-      email: "dattatraya.bharne@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Shirur",
-      type: "MLA",
-      term: 15,
-      name: "Dnyaneshwar Katke",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 0,
-      phone: "9876500100",
-      email: "dnyaneshwar.katke@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Ambegaon",
-      type: "MLA",
-      term: 15,
-      name: "Dilip Walse-Patil",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 0,
-      phone: "9876500110",
-      email: "dilip.walsepatil@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Kasba Peth",
-      type: "MLA",
-      term: 15,
-      name: "Hemant Narayan Rasane",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 0,
-      phone: "9876500120",
-      email: "hemant.rasane@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Chinchwad",
-      type: "MLA",
-      term: 15,
-      name: "Shankar Jagtap",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 0,
-      phone: "9876500130",
-      email: "shankar.jagtap@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Bhor",
-      type: "MLA",
-      term: 15,
-      name: "Shankar Hiraman Mandekar",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 0,
-      phone: "9876500140",
-      email: "shankar.mandekar@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Shivajinagar",
-      type: "MLA",
-      term: 15,
-      name: "Siddharth Shirole",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 0,
-      phone: "9876500150",
-      email: "siddharth.shirole@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Pune Cantonment",
-      type: "MLA",
-      term: 15,
-      name: "Suni Dnyandev Kamble",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 0,
-      phone: "9876500160",
-      email: "suni.kamble@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Maval",
-      type: "MLA",
-      term: 15,
-      name: "Sunil Shankarrao Shelke",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 0,
-      phone: "9876500170",
-      email: "sunil.shelke@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Parvati",
-      type: "MLA",
-      term: 15,
-      name: "Madhuri Satish Misal",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 0,
-      phone: "9876500180",
-      email: "madhuri.misal@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Daund",
-      type: "MLA",
-      term: 15,
-      name: "Rahul Subhashrao Kul",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 0,
-      phone: "9876500190",
-      email: "rahul.kul@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Junnar",
-      type: "MLA",
-      term: 15,
-      name: "Sharad Sonavane",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 0,
-      phone: "9876500200",
-      email: "sharad.sonavane@mla.gov.in"
-    },
-    {
-      district: "PUNE",
-      taluka: "Purandar",
-      type: "MLA",
-      term: 15,
-      name: "Vijay Shivtare",
-      schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME",
-      budget: 50000,
-      fundUtilized: 0,
-      balance: 50000,
-      pendingDemands: 0,
-      phone: "9876500210",
-      email: "vijay.shivtare@mla.gov.in"
-    }
-    // If you add MLC entries later, also include phone/email fields similarly.
-  ]
-};
 
 /* ----------------------------------------------------------------------------
  * TYPES & UTILS
@@ -417,21 +112,11 @@ function SearchableSelect({
  * -------------------------------------------------------------------------- */
 export default function MlaMaster() {
   /* --------------------------- Seed -> Table Data ------------------------ */
-  const seedRecords: UserRecord[] = useMemo(() => {
-    return (mlaMlcData.data || []).map((r, i) => ({
-      id: `${r.type}-${i + 1}`,
-      type: (r.type as UserType) || "MLA",
-      name: r.name || "",
-      district: r.district || "",
-      constituency: r.taluka || "",
-      phone: (r as any).phone || "",   // << now reads from mock
-      email: (r as any).email || "",   // << now reads from mock
-      term: Number((r as any).term ?? 0),
-      status: "Active",
-    }));
-  }, []);
+  // REMOVE MOCK DATA
+  // const mlaMlcData = { ... };
 
-  const [rows, setRows] = useState<UserRecord[]>(seedRecords);
+  // Remove seedRecords and use an empty array for initial state
+  const [rows, setRows] = useState<UserRecord[]>([]);
 
   /* ------------------------------- Filters ------------------------------- */
   const [fType, setFType] = useState<"All" | UserType>("All");
@@ -440,11 +125,10 @@ export default function MlaMaster() {
   const [fStatus, setFStatus] = useState<"All" | Status>("All");
 
   const typeOptions = useMemo(() => ["All", "MLA", "MLC"] as const, []);
-  const districtOptions = useMemo(() => ["All", ...uniq(rows.map(r => r.district))], [rows]);
-  const constituencyOptions = useMemo(
-    () => ["All", ...uniq(rows.map(r => r.constituency))],
-    [rows]
-  );
+  // REMOVE this duplicate declaration:
+  // const districtOptions = useMemo(() => ["All", ...uniq(rows.map(r => r.district))], [rows]);
+  // REMOVE this duplicate declaration:
+  // const constituencyOptions = useMemo(() => ["All", ...uniq(rows.map(r => r.constituency))], [rows]);
   const statusOptions = useMemo(() => ["All", "Active", "Inactive"] as const, []);
 
   const filtered = useMemo(() => {
@@ -548,53 +232,98 @@ export default function MlaMaster() {
     return null;
   };
 
-  const handleSave = () => {
+  // API endpoints
+  const API_BASE = import.meta.env.VITE_API_URL || "";
+  const API_DISTRICTS = `${API_BASE}/api/dropdown/districts`;
+  const API_CONSTITUENCIES = (districtId: string) => `${API_BASE}/api/dropdown/constituencies/by-district/${districtId}`;
+  const API_USER_MLA = `${API_BASE}/api/user/mla`;
+  const API_USER_MLC = `${API_BASE}/api/user/mlc`;
+
+  // API-driven dropdowns
+  const [districtOptions, setDistrictOptions] = useState<string[]>(["All"]);
+  const [constituencyOptions, setConstituencyOptions] = useState<string[]>(["All"]);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
+  const [loadingConstituencies, setLoadingConstituencies] = useState(false);
+
+  // Fetch districts on mount
+  useEffect(() => {
+    setLoadingDistricts(true);
+    fetch(API_DISTRICTS)
+      .then(res => res.json())
+      .then(data => {
+        setDistrictOptions(["All", ...data.map((d: any) => d.name)]);
+      })
+      .catch(() => setDistrictOptions(["All"]))
+      .finally(() => setLoadingDistricts(false));
+  }, []);
+
+  // Fetch constituencies when district changes
+  useEffect(() => {
+    if (!form.district || form.district === "All") {
+      setConstituencyOptions(["All"]);
+      return;
+    }
+    setLoadingConstituencies(true);
+    // Find districtId from districtOptions (assume name is unique)
+    fetch(API_DISTRICTS)
+      .then(res => res.json())
+      .then(districts => {
+        const districtObj = districts.find((d: any) => d.name === form.district);
+        if (!districtObj) return setConstituencyOptions(["All"]);
+        return fetch(API_CONSTITUENCIES(districtObj.id))
+          .then(res => res.json())
+          .then(data => setConstituencyOptions(["All", ...data.map((c: any) => c.name)]));
+      })
+      .catch(() => setConstituencyOptions(["All"]))
+      .finally(() => setLoadingConstituencies(false));
+  }, [form.district]);
+
+  const handleSave = async () => {
     const err = validate();
     setLetterError(err || "");
     if (err) return;
 
-    if (isEdit && form.id) {
-      setRows(prev =>
-        prev.map(r =>
-          r.id === form.id
-            ? {
-                ...r,
-                type: form.type,
-                name: form.name.trim(),
-                district: form.district,
-                constituency: form.type === "MLC" ? (form.constituency || "—") : form.constituency,
-                phone: form.phone,
-                email: form.email,
-                term: Number(form.term || 0),
-                status: form.status,
-                deactivationLetterName:
-                  form.status === "Inactive"
-                    ? (form.deactivationLetter?.name || form.deactivationLetterName)
-                    : undefined,
-              }
-            : r
-        )
-      );
-    } else {
-      const newId = `${form.type}-${Date.now().toString(36).slice(-6)}`;
-      const newRec: UserRecord = {
-        id: newId,
-        type: form.type,
-        name: form.name.trim(),
-        district: form.district,
-        constituency: form.type === "MLC" ? (form.constituency || "—") : form.constituency,
-        phone: form.phone,
-        email: form.email,
-        term: Number(form.term || 0),
-        status: form.status,
-        deactivationLetterName:
-          form.status === "Inactive" ? (form.deactivationLetter?.name || undefined) : undefined,
-      };
-      setRows(prev => [newRec, ...prev]);
+    // Prepare payload
+    const payload: any = {
+      type: form.type,
+      name: form.name.trim(),
+      district: form.district,
+      constituency: form.constituency,
+      phone: form.phone,
+      email: form.email,
+      term: Number(form.term || 0),
+      status: form.status,
+      deactivationLetterName:
+        form.status === "Inactive"
+          ? (form.deactivationLetter?.name || form.deactivationLetterName)
+          : undefined,
+    };
+
+    // If deactivationLetter is present, use FormData
+    let body: any = payload;
+    let headers: any = { "Content-Type": "application/json" };
+    if (form.deactivationLetter) {
+      body = new FormData();
+      Object.entries(payload).forEach(([k, v]) => {
+        if (v !== undefined) body.append(k, v);
+      });
+      body.append("deactivationLetter", form.deactivationLetter);
+      headers = undefined; // Let browser set multipart
     }
 
-    setDialogOpen(false);
-    setForm(blankForm);
+    const url = form.type === "MLA" ? API_USER_MLA : API_USER_MLC;
+    try {
+      await fetch(url, {
+        method: "POST",
+        body,
+        headers,
+      });
+      // Optionally, refetch users from API here
+      setDialogOpen(false);
+      setForm(blankForm);
+    } catch (e) {
+      setLetterError("Failed to save. Please try again.");
+    }
   };
 
   /* --------------------------------- UI ---------------------------------- */
@@ -668,7 +397,8 @@ export default function MlaMaster() {
                       updateForm("district", v);
                       updateForm("constituency", "");
                     }}
-                    options={uniq(rows.map(r => r.district))}
+                    options={districtOptions}
+                    placeholder={loadingDistricts ? "Loading..." : "Select district"}
                   />
                 </div>
 
@@ -680,8 +410,8 @@ export default function MlaMaster() {
                   <SearchableSelect
                     value={form.constituency}
                     onValueChange={(v) => updateForm("constituency", v)}
-                    options={uniq(rows.filter(r => !form.district || r.district === form.district).map(r => r.constituency))}
-                    placeholder={form.type === "MLA" ? "Select constituency" : "—"}
+                    options={constituencyOptions}
+                    placeholder={loadingConstituencies ? "Loading..." : (form.type === "MLA" ? "Select constituency" : "—")}
                   />
                 </div>
 

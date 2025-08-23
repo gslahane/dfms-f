@@ -166,7 +166,7 @@ const getRoleBasedRoutes = (user: any) => {
     case 'VENDOR':
       return [
         <Route key="vendor-dashboard" path="/vendor/dashboard" element={<PrivateRoute><ContractorDashboard /></PrivateRoute>} />,
-        <Route key="vendor-works" path="/vendor/view-works" element={<PrivateRoute><ContractorViewWorks /></PrivateRoute>} />
+        // <Route key="vendor-works" path="/vendor/view-works" element={<PrivateRoute><ContractorViewWorks /></PrivateRoute>} />
       ];
 
     /** DEFAULT */

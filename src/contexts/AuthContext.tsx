@@ -18,6 +18,9 @@ type User = {
   agencyCode?: string;
   role?: Role;
   designation?: string;
+  fullName?: string;
+  districtId?: number;
+  districtName?: string;
 };
 
 interface AuthContextType {

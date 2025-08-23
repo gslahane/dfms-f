@@ -26,7 +26,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
       password: formData.password,
     });
 
-    // If API returns { token, mobile, agencyCode, role, designation }
+    // If API returns { token, mobile, agencyCode, role, designation, fullName, districtId, districtName }
     if (res.data && res.data.token) {
       const userData = {
         token: res.data.token,
@@ -34,6 +34,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
         agencyCode: res.data.agencyCode,
         role: res.data.role,
         designation: res.data.designation,
+        fullName: res.data.fullName,
+        districtId: res.data.districtId,
+        districtName: res.data.districtName,
         username: formData.username.trim(),
       };
       // Save token and user info using your AuthContext
