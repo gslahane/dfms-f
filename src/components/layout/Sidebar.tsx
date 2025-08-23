@@ -14,40 +14,53 @@ import {
   ArrowLeftRight
 } from 'lucide-react';
 
-// Role names must match backend exactly
 const SIDEBAR_CONFIG = {
   STATE_ADMIN: [
     { path: '/dashboard',            icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/budget-allocation',  icon: CreditCard,     label: 'Budget Allocation' },
-    // { path: '/fund-demands',         icon: Users,           label: 'View District Fund Demands' },
-    { path: '/mla-fund-demands',     icon: IndianRupee,           label: 'View Fund Demands' },
-    
-    // { path: '/scheme-master',        icon: FileText,        label: 'Scheme Master' },
-    { path: '/mla-mlc-master',        icon: Users,        label: 'MLA|MLC Master' },
+    { path: '/budget-allocation',    icon: CreditCard,      label: 'Budget Allocation' },
+    { path: '/mla-fund-demands',     icon: IndianRupee,     label: 'View Fund Demands' },
+    { path: '/mla-mlc-master',       icon: Users,           label: 'MLA|MLC Master' },
     { path: '/district-management',  icon: Building2,       label: 'District Master' },
-    { path: '/fund-history',         icon: ArrowLeftRight,        label: 'Vouchers' },
+    { path: '/fund-history',         icon: ArrowLeftRight,  label: 'Vouchers' },
     { path: '/reports',              icon: BarChart3,       label: 'Reports' }
   ],
+
   DISTRICT_ADMIN: [
     { path: '/district-dashboard',   icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/view-demands',         icon: CheckCircle,     label: 'View IA Demands' },
-    { path: '/mla-mlc-recommendation', icon: IndianRupee,           label: 'View Mla Recommendation' },
-
-    { path: '/fund-allocation',      icon: IndianRupee,     label: 'Budget Sanctioned to Schemes' },
-    // { path: '/scheme-master',        icon: FileText,        label: 'Scheme Master' },
+    { path: '/mla-mlc-recommendation', icon: IndianRupee,   label: 'MLA Recommendations' },
+    { path: '/fund-allocation',      icon: IndianRupee,     label: 'Budget Sanctioned' },
     { path: '/ia-master',            icon: Users,           label: 'IA Master' },
     { path: '/work-master',          icon: FileText,        label: 'Scheme-Work Master' },
     { path: '/reappropriation',      icon: ArrowLeftRight,  label: 'Re-appropriation' },
     { path: '/reports',              icon: BarChart3,       label: 'Reports' }
   ],
+
   IA_ADMIN: [
-    { path: '/iadashboard',            icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/iadashboard',          icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/fund-demand',          icon: CreditCard,      label: 'Fund Demand' },
     { path: '/vendor-master',        icon: Users,           label: 'Vendor Master' },
     { path: '/work-vendor',          icon: TrendingUp,      label: 'Work Vendor Mapping' },
     { path: '/tax-master',           icon: FileText,        label: 'Tax/Deduction Master' },
+    { path: '/reports',              icon: BarChart3,       label: 'Reports' }
+  ],
 
-    // { path: '/project-progress',     icon: TrendingUp,      label: 'Project Progress' },
+  MLA: [
+    { path: '/mla-dashboard',        icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/recommend-work',       icon: IndianRupee,     label: 'Recommend Work' },
+    { path: '/reports',              icon: BarChart3,       label: 'Reports' }
+  ],
+
+  MLC: [
+    { path: '/mlc-dashboard',        icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/recommend-work',       icon: IndianRupee,     label: 'Recommend Work' },
+    { path: '/reports',              icon: BarChart3,       label: 'Reports' }
+  ],
+
+  CONTRACTOR: [
+    { path: '/contractor-dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/assigned-works',       icon: FileText,        label: 'Assigned Works' },
+    { path: '/fund-releases',        icon: IndianRupee,     label: 'Fund Releases' },
     { path: '/reports',              icon: BarChart3,       label: 'Reports' }
   ]
 };
@@ -100,9 +113,9 @@ const Sidebar = () => {
       {/* Footer: User Info */}
       <div className="p-4 border-t border-gray-200 bg-gray-50">
         <div className="text-center">
-          <p className="text-sm font-medium text-gray-900">{user?.name}</p>
-          <p className="text-xs text-gray-600">{user?.department || ''}</p>
-          <p className="text-xs text-gray-500">{user?.district || ''}</p>
+          <p className="text-sm font-medium text-gray-900">{user?.username}</p>
+          <p className="text-xs text-gray-600">{user?.designation || ''}</p>
+          <p className="text-xs text-gray-500">{user?.mobile || ''}</p>
         </div>
       </div>
     </aside>
