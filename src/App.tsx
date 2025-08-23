@@ -41,7 +41,7 @@ import MlcReports from '@/components/mlc/Reports';
 
 // Contractor / Vendor
 import ContractorDashboard from '@/components/vendor/Dashbaord';
-import ContractorViewWorks from '@/components/vendor/viewWorks';
+// import ContractorViewWorks from '@/components/vendor/viewWorks';
 
 const queryClient = new QueryClient();
 

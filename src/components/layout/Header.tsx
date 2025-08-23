@@ -19,8 +19,6 @@ const Header = () => {
   const { user, logout } = useAuth();
   const [notifications] = useState([
     { id: 1, message: 'New fund allocation approved', type: 'success' },
-    { id: 2, message: 'Vendor verification pending', type: 'warning' },
-    { id: 3, message: 'Project deadline approaching', type: 'info' }
   ]);
 
  const handleLogout = () => {
@@ -33,10 +31,10 @@ const Header = () => {
       <div className="flex items-center justify-between h-full px-6">
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-semibold text-gray-900">
-            Fund Management System
+            E-SAMARTH Portal
           </h1>
           <Badge variant="secondary" className="bg-primary/10 text-primary">
-            {user?.role} Portal
+            {user?.role} Dashboard
           </Badge>
         </div>
 

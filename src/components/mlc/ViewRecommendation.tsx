@@ -734,7 +734,7 @@ function MLCViewRecommendation() {
                       <span className="text-muted-foreground">Name:</span>
                       <div className="font-medium">Shri Dilip Dattatray Walse</div>
                     </div>
-                    <div>
+    <div>
                       <span className="text-muted-foreground">Constituency:</span>
                       <div className="font-medium">Ambegaon Assembly Constituency</div>
                     </div>
