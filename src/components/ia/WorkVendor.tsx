@@ -5,9 +5,52 @@ import axios from "axios";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { User, CheckCircle, Loader2, X, UploadCloud } from "lucide-react";
+import { User, CheckCircle, Loader2, X, UploadCloud, AlertCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:1010/dfds-backend";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+// TypeScript interfaces
+interface Work {
+  id: number;
+  name: string;
+  financialYear: string;
+  adminApprovedAmount: number;
+  workPortionAmount?: number;
+  workLimit?: number;
+  schemeId?: number;
+  status: string;
+  assignedVendor?: Vendor;
+  assignedTax?: Tax[];
+  grossTotal?: number;
+  workOrderFile?: File;
+}
+
+interface Vendor {
+  id: number;
+  name: string;
+  aadhaarNumber?: string;
+  gstNumber?: string;
+  bankAccountNumber?: string;
+  bankIfsc?: string;
+}
+
+interface Tax {
+  taxName: string;
+  taxPercentage: number;
+  taxAmount?: number;
+}
+
+interface AssignVendorModalProps {
+  open: boolean;
+  onClose: () => void;
+  work: Work | null;
+  onAssign: (data: any) => void;
+  vendors: Vendor[];
+  taxes: Tax[];
+}
+
+interface WorkVendorManagementProps {}
 
 function getStatusBadge(status: string) {
   return (
@@ -27,14 +70,15 @@ function getStatusBadge(status: string) {
 }
 
 // Assign Vendor Modal
-const AssignVendorModal = ({
+const AssignVendorModal: React.FC<AssignVendorModalProps> = ({
   open,
   onClose,
   work,
   onAssign,
   vendors,
   taxes,
-}: any) => {
+}) => {
+  const { toast } = useToast();
   const [selectedVendorId, setSelectedVendorId] = useState("");
   const [selectedTaxNames, setSelectedTaxNames] = useState<string[]>([]);
   const [portionAmount, setPortionAmount] = useState<number>(work?.workPortionAmount ?? 0);
@@ -42,40 +86,51 @@ const AssignVendorModal = ({
   const [workOrderFile, setWorkOrderFile] = useState<File | null>(null);
 
   useEffect(() => {
-    setPortionAmount(work?.workPortionAmount ?? 0);
-    setSelectedVendorId("");
-    setSelectedTaxNames([]);
-    setWorkOrderFile(null);
+    if (work) {
+      setPortionAmount(work.workPortionAmount ?? 0);
+      setSelectedVendorId("");
+      setSelectedTaxNames([]);
+      setWorkOrderFile(null);
+    }
   }, [work, open]);
 
   if (!open || !work) return null;
 
   // Tax objects
-  const selectedTaxObjs = taxes.filter((t: any) => selectedTaxNames.includes(t.taxName));
+  const selectedTaxObjs = taxes.filter((t: Tax) => selectedTaxNames.includes(t.taxName));
   const dedAmount = selectedTaxObjs.reduce(
-    (sum: number, t: any) => sum + ((portionAmount * t.taxPercentage) / 100),
+    (sum: number, t: Tax) => sum + ((portionAmount * t.taxPercentage) / 100),
     0
   );
   const grossTotal = portionAmount + dedAmount;
 
-  const vendor = vendors.find((v: any) => v.id === Number(selectedVendorId));
-  const canAssign = vendor && portionAmount > 0 && grossTotal <= (work.workLimit ?? Infinity);
+  const vendor = vendors.find((v: Vendor) => v.id === Number(selectedVendorId));
+  const canAssign = vendor && portionAmount > 0 && grossTotal <= (work.workLimit ?? work.adminApprovedAmount);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.length) setWorkOrderFile(e.target.files[0]);
   };
 
   const handleAssign = async () => {
+    if (!canAssign) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill all required fields correctly",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsAssigning(true);
     try {
-      // Send API request to assign vendor (no file upload to backend now)
+      // Send API request to assign vendor
       await axios.post(
         `${BASE_URL}/api/work-vendor-mapping/assign-vendor`,
         {
           workId: work.id,
           vendorId: Number(selectedVendorId),
           workPortionAmount: portionAmount,
-          taxes: selectedTaxObjs.map((t: any) => ({
+          taxes: selectedTaxObjs.map((t: Tax) => ({
             taxName: t.taxName,
             taxPercentage: t.taxPercentage,
             taxAmount: (portionAmount * t.taxPercentage) / 100,
@@ -85,6 +140,7 @@ const AssignVendorModal = ({
           headers: { Authorization: localStorage.getItem("token") || "" },
         }
       );
+      
       onAssign({
         assignedVendor: vendor,
         assignedTax: selectedTaxObjs,
@@ -93,10 +149,23 @@ const AssignVendorModal = ({
         status: "Completed",
         workOrderFile, // just for frontend display
       });
+      
+      toast({
+        title: "Success",
+        description: "Vendor assigned successfully",
+        variant: "default"
+      });
+      
       setIsAssigning(false);
       onClose();
-    } catch (err) {
-      alert("Failed to assign vendor. Please try again.");
+    } catch (err: any) {
+      console.error('Error assigning vendor:', err);
+      const errorMessage = err.response?.data?.message || "Failed to assign vendor. Please try again.";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
       setIsAssigning(false);
     }
   };
@@ -126,7 +195,7 @@ const AssignVendorModal = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
           <div>
             <label className="font-semibold text-gray-700 block mb-1">
-              Select Vendor
+              Select Vendor <span className="text-red-500">*</span>
             </label>
             <select
               className="w-full border rounded px-3 py-2"
@@ -134,7 +203,7 @@ const AssignVendorModal = ({
               onChange={(e) => setSelectedVendorId(e.target.value)}
             >
               <option value="">-- Select Vendor --</option>
-              {vendors.map((v: any) => (
+              {vendors.map((v: Vendor) => (
                 <option key={v.id} value={v.id}>
                   {v.name} (**** **** {v.aadhaarNumber?.slice(-4) || "----"})
                 </option>
@@ -168,7 +237,7 @@ const AssignVendorModal = ({
           </div>
           <div>
             <label className="font-semibold text-gray-700 block mb-1">
-              Work Portion Amount (Work Order Amount)
+              Work Portion Amount (Work Order Amount) <span className="text-red-500">*</span>
             </label>
             <Input
               type="number"
@@ -178,7 +247,8 @@ const AssignVendorModal = ({
               onChange={(e) => setPortionAmount(Number(e.target.value))}
             />
             {portionAmount > work.adminApprovedAmount && (
-              <div className="text-red-500 text-xs mt-1">
+              <div className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
                 Portion amount cannot exceed Admin Approved Amount.
               </div>
             )}
@@ -194,7 +264,7 @@ const AssignVendorModal = ({
               }
               size={Math.min(4, taxes.length)}
             >
-              {taxes.map((tax: any) => (
+              {taxes.map((tax: Tax) => (
                 <option key={tax.taxName} value={tax.taxName}>
                   {tax.taxName} ({tax.taxPercentage}%)
                 </option>
@@ -233,7 +303,8 @@ const AssignVendorModal = ({
           </div>
         </div>
         {grossTotal > (work.adminApprovedAmount ?? 0) && (
-          <div className="text-red-500 text-xs mb-2">
+          <div className="text-red-500 text-xs mb-2 flex items-center gap-1">
+            <AlertCircle className="w-3 h-3" />
             Gross amount cannot exceed Admin Approved Amount!
           </div>
         )}
@@ -255,12 +326,17 @@ const AssignVendorModal = ({
 };
 
 // Main Component
-const WorkVendorManagement = () => {
-  const [works, setWorks] = useState<any[]>([]);
-  const [vendors, setVendors] = useState<any[]>([]);
-  const [taxes, setTaxes] = useState<any[]>([]);
+const WorkVendorManagement: React.FC<WorkVendorManagementProps> = () => {
+  const { toast } = useToast();
+  const [works, setWorks] = useState<Work[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [taxes, setTaxes] = useState<Tax[]>([]);
   const [counts, setCounts] = useState<any>({});
-  const [activeModal, setActiveModal] = useState({ open: false, work: null });
+  const [activeModal, setActiveModal] = useState({ open: false, work: null as Work | null });
+
+  // Loading states
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Filters
   const [filterFy, setFilterFy] = useState("");
@@ -270,42 +346,69 @@ const WorkVendorManagement = () => {
 
   // Fetch all data
   useEffect(() => {
-    axios.get(`${BASE_URL}/api/work-vendor-mapping/works`, {
-      headers: { Authorization: localStorage.getItem("token") || "" }
-    }).then(res => setWorks(res.data || []));
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const [worksRes, vendorsRes, taxesRes, countsRes] = await Promise.all([
+          axios.get(`${BASE_URL}/api/work-vendor-mapping/works`, {
+            headers: { Authorization: localStorage.getItem("token") || "" }
+          }),
+          axios.get(`${BASE_URL}/api/work-vendor-mapping/vendors`, {
+            headers: { Authorization: localStorage.getItem("token") || "" }
+          }),
+          axios.get(`${BASE_URL}/api/tax-master`, {
+            headers: { Authorization: localStorage.getItem("token") || "" }
+          }),
+          axios.get(`${BASE_URL}/api/work-vendor-mapping/counts`, {
+            headers: { Authorization: localStorage.getItem("token") || "" }
+          })
+        ]);
 
-    axios.get(`${BASE_URL}/api/work-vendor-mapping/vendors`, {
-      headers: { Authorization: localStorage.getItem("token") || "" }
-    }).then(res => setVendors(res.data || []));
+        setWorks(worksRes.data || []);
+        setVendors(vendorsRes.data || []);
+        setTaxes(taxesRes.data || []);
+        setCounts(countsRes.data || {});
+      } catch (err: any) {
+        console.error('Error fetching data:', err);
+        const errorMessage = err.response?.data?.message || "Failed to fetch data";
+        setError(errorMessage);
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    axios.get(`${BASE_URL}/api/tax-master`, {
-      headers: { Authorization: localStorage.getItem("token") || "" }
-    }).then(res => setTaxes(res.data || []));
-
-    axios.get(`${BASE_URL}/api/work-vendor-mapping/counts`, {
-      headers: { Authorization: localStorage.getItem("token") || "" }
-    }).then(res => setCounts(res.data || {}));
-  }, []);
+    fetchData();
+  }, [toast]);
 
   // Filtered works
-  let filteredWorks = works;
-  if (filterFy)
-    filteredWorks = filteredWorks.filter((w: any) => w.financialYear === filterFy);
-  if (filterScheme)
-    filteredWorks = filteredWorks.filter((w: any) => String(w.schemeId) === filterScheme);
-  if (filterWork)
-    filteredWorks = filteredWorks.filter((w: any) => w.name === filterWork);
-  if (filterStatus)
-    filteredWorks = filteredWorks.filter((w: any) =>
-      filterStatus === "Completed"
-        ? w.status === "Completed" && w.assignedVendor
-        : w.status === "Pending" && !w.assignedVendor
-    );
+  const filteredWorks = useMemo(() => {
+    let filtered = works;
+    if (filterFy)
+      filtered = filtered.filter((w: Work) => w.financialYear === filterFy);
+    if (filterScheme)
+      filtered = filtered.filter((w: Work) => String(w.schemeId) === filterScheme);
+    if (filterWork)
+      filtered = filtered.filter((w: Work) => w.name === filterWork);
+    if (filterStatus)
+      filtered = filtered.filter((w: Work) =>
+        filterStatus === "Completed"
+          ? w.status === "Completed" && w.assignedVendor
+          : w.status === "Pending" && !w.assignedVendor
+      );
+    return filtered;
+  }, [works, filterFy, filterScheme, filterWork, filterStatus]);
 
   // Assign vendor logic (update UI after assigning)
-  const handleAssignVendor = (workId: any, data: any) => {
+  const handleAssignVendor = (workId: number, data: any) => {
     setWorks(ws =>
-      ws.map((w: any) =>
+      ws.map((w: Work) =>
         w.id === workId
           ? {
               ...w,
@@ -322,13 +425,39 @@ const WorkVendorManagement = () => {
   };
 
   // FY/Work/Scheme options
-  const fyOptions = useMemo(() => [...new Set(works.map((w: any) => w.financialYear))], [works]);
+  const fyOptions = useMemo(() => [...new Set(works.map((w: Work) => w.financialYear))], [works]);
   const schemeOptions = useMemo(() => {
-    const unique = new Set();
-    works.forEach((w: any) => unique.add(String(w.schemeId)));
+    const unique = new Set<string>();
+    works.forEach((w: Work) => unique.add(String(w.schemeId || '')));
     return Array.from(unique);
   }, [works]);
-  const workOptions = useMemo(() => [...new Set(works.map((w: any) => w.name))], [works]);
+  const workOptions = useMemo(() => [...new Set(works.map((w: Work) => w.name))], [works]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+          <span className="text-lg font-medium text-gray-600">Loading work vendor data...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Data</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()}>
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 p-6 bg-gray-50 min-h-screen">
@@ -465,7 +594,7 @@ const WorkVendorManagement = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredWorks.map((w: any, idx: number) => (
+            {filteredWorks.map((w: Work, idx: number) => (
               <tr
                 key={w.id}
                 className={`${
@@ -509,7 +638,7 @@ const WorkVendorManagement = () => {
             ))}
             {filteredWorks.length === 0 && (
               <tr>
-                <td colSpan={12} className="text-center text-gray-400 py-6">
+                <td colSpan={7} className="text-center text-gray-400 py-6">
                   No works found for selected filter
                 </td>
               </tr>
@@ -523,7 +652,7 @@ const WorkVendorManagement = () => {
         open={activeModal.open}
         onClose={() => setActiveModal({ open: false, work: null })}
         work={activeModal.work}
-        onAssign={(data: any) => handleAssignVendor(activeModal.work.id, data)}
+        onAssign={(data: any) => handleAssignVendor(activeModal.work?.id || 0, data)}
         vendors={vendors}
         taxes={taxes}
       />

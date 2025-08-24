@@ -60,26 +60,77 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useToast } from '@/hooks/use-toast';
 
-// Types for the API response
-interface Recommendation {
+// Types for the API response based on the provided structure
+interface Work {
   id: number;
   workName: string;
   workCode: string;
-  iaName: string;
-  mlaLetter: string;
-  recommendedAmount: number;
-  aaAmount: number;
-  aaLetter: string;
-  fundDisbursed: number;
-  pendingAmount: number;
-  status: string;
+  adminApprovedAmount: number;
+  adminApprovedletterUrl: string;
+  workPortionTax: number;
+  workPortionAmount: number;
+  workOrderLetterUrl: string;
   financialYear: string;
-  scheme: string;
-  sector: string;
+  workStartDate: string;
+  workEndDate: string;
+  sanctionDate: string;
+  grossAmount: number;
+  balanceAmount: number;
+  description: string;
+  remark: string;
+  status: string;
   createdAt: string;
+  createdBy: string;
+  scheme: {
+    id: number;
+    schemeName: string;
+    schemeCode: string;
+    description: string;
+    financialYear: {
+      id: number;
+      finacialYear: string;
+      startYear: number;
+    };
+  };
+  implementingAgency: {
+    id: number;
+    fullname: string;
+    username: string;
+    designation: string;
+    district: {
+      id: number;
+      districtName: string;
+    };
+  };
+  recommendedByMla: {
+    id: number;
+    mlaName: string;
+    party: string;
+    contactNumber: string;
+    email: string;
+    term: number;
+    status: string;
+    constituency: {
+      id: number;
+      constituencyName: string;
+      district: {
+        id: number;
+        districtName: string;
+      };
+    };
+  };
+  district: {
+    id: number;
+    districtName: string;
+  };
 }
 
 interface FinancialYear {
+  id: number;
+  name: string;
+}
+
+interface Sector {
   id: number;
   name: string;
 }
@@ -90,32 +141,23 @@ interface ImplementingAgency {
   code: string;
 }
 
-interface Sector {
-  id: number;
-  name: string;
-}
 
-interface Scheme {
-  id: number;
-  name: string;
-}
 
 // Form schema
 const formSchema = z.object({
   financialYear: z.string().min(1, 'Please select financial year'),
+  sector: z.string().min(1, 'Please select sector'),
   implementingAgency: z.string().min(1, 'Please select implementing agency'),
   workName: z.string().min(1, 'Work name is required'),
-  recommendedWorkAmount: z.number().min(1, 'Amount must be greater than 0'),
-  scheme: z.string().min(1, 'Please select scheme'),
+  recommendedAmount: z.number().min(1, 'Amount must be greater than 0'),
   recommendationLetter: z.any().optional(),
 });
 
 function MLAViewRecommendation() {
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [works, setWorks] = useState<Work[]>([]);
   const [financialYears, setFinancialYears] = useState<FinancialYear[]>([]);
-  const [implementingAgencies, setImplementingAgencies] = useState<ImplementingAgency[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
-  const [schemes, setSchemes] = useState<Scheme[]>([]);
+  const [implementingAgencies, setImplementingAgencies] = useState<ImplementingAgency[]>([]);
   const [selectedFinancialYear, setSelectedFinancialYear] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -130,10 +172,10 @@ function MLAViewRecommendation() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       financialYear: '',
+      sector: '',
       implementingAgency: '',
       workName: '',
-      recommendedWorkAmount: 0,
-      scheme: '',
+      recommendedAmount: 0,
     },
   });
 
@@ -151,25 +193,25 @@ function MLAViewRecommendation() {
       const fyResponse = await axios.get(`${baseURL}/api/dropdown/financial-years`, { headers });
       setFinancialYears(fyResponse.data || []);
 
-      // Fetch implementing agencies (divisions)
-      const iaResponse = await axios.get(`${baseURL}/api/dropdown/divisions`, { headers });
-      setImplementingAgencies(iaResponse.data || []);
-
       // Fetch sectors
       const sectorResponse = await axios.get(`${baseURL}/api/dropdown/sectors`, { headers });
       setSectors(sectorResponse.data || []);
 
-      // Fetch schemes
-      const schemeResponse = await axios.get(`${baseURL}/api/dropdown/schemes`, { headers });
-      setSchemes(schemeResponse.data || []);
+      // Fetch implementing agencies with district ID
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const districtId = user.districtId;
+      if (districtId) {
+        const iaResponse = await axios.get(`${baseURL}/api/dropdown/implementing-agencies?districtId=${districtId}`, { headers });
+        setImplementingAgencies(iaResponse.data || []);
+      }
 
     } catch (err: any) {
       console.error('Error fetching dropdown data:', err);
     }
   };
 
-  // Fetch recommendations
-  const fetchRecommendations = async () => {
+  // Fetch works
+  const fetchWorks = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -178,7 +220,7 @@ function MLAViewRecommendation() {
       
       const params = selectedFinancialYear !== 'all' ? { financialYearId: selectedFinancialYear } : {};
       
-      const response = await axios.get(`${baseURL}/api/mla/recommendations`, {
+      const response = await axios.get(`${baseURL}/api/works`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -186,10 +228,10 @@ function MLAViewRecommendation() {
         params
       });
       
-      setRecommendations(response.data || []);
+      setWorks(response.data || []);
     } catch (err: any) {
-      console.error('Error fetching recommendations:', err);
-      setError(err.response?.data?.message || 'Failed to fetch recommendations');
+      console.error('Error fetching works:', err);
+      setError(err.response?.data?.message || 'Failed to fetch works');
     } finally {
       setLoading(false);
     }
@@ -200,7 +242,7 @@ function MLAViewRecommendation() {
   }, []);
 
   useEffect(() => {
-    fetchRecommendations();
+    fetchWorks();
   }, [selectedFinancialYear]);
 
   // Helper functions
@@ -272,10 +314,11 @@ function MLAViewRecommendation() {
       
       const formData = new FormData();
       formData.append('financialYearId', submittedData.financialYear);
+      formData.append('sectorId', submittedData.sector);
       formData.append('implementingAgencyId', submittedData.implementingAgency);
       formData.append('workName', submittedData.workName);
-      formData.append('recommendedWorkAmount', submittedData.recommendedWorkAmount.toString());
-      formData.append('schemeId', submittedData.scheme);
+      formData.append('recommendedAmount', submittedData.recommendedAmount.toString());
+
       
       if (submittedData.recommendationLetter) {
         formData.append('recommendationLetter', submittedData.recommendationLetter);
@@ -301,8 +344,8 @@ function MLAViewRecommendation() {
         setFileName('');
         setSubmittedData(null);
         
-        // Refresh recommendations
-        fetchRecommendations();
+        // Refresh works
+        fetchWorks();
       } else {
         toast({
           title: "Error",
@@ -324,11 +367,11 @@ function MLAViewRecommendation() {
     console.log('Export functionality to be implemented');
   };
 
-  // Filter recommendations based on search term
-  const filteredRecommendations = recommendations.filter(rec =>
-    rec.workName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    rec.workCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    rec.iaName.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filter works based on search term
+  const filteredWorks = works.filter(work =>
+    work.workName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    work.workCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    work.implementingAgency?.fullname.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -336,7 +379,7 @@ function MLAViewRecommendation() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex items-center space-x-2">
           <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
-          <span className="text-lg font-medium text-gray-600">Loading recommendations...</span>
+          <span className="text-lg font-medium text-gray-600">Loading works...</span>
         </div>
       </div>
     );
@@ -350,7 +393,7 @@ function MLAViewRecommendation() {
           <h1 className="text-3xl font-bold text-gray-900">MLA Dashboard</h1>
           <p className="text-gray-600 mt-1">Manage work recommendations</p>
         </div>
-        <Button onClick={fetchRecommendations} variant="outline">
+        <Button onClick={fetchWorks} variant="outline">
           <RefreshCw className="w-4 h-4 mr-2" />
           Refresh
         </Button>
@@ -368,10 +411,10 @@ function MLAViewRecommendation() {
         </CardContent>
       </Card>
 
-      {/* Recent Recommendations Section */}
+      {/* Recent Works Section */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl font-bold">Recent Recommendations</CardTitle>
+          <CardTitle className="text-xl font-bold">Recent Works</CardTitle>
         </CardHeader>
         <CardContent>
           {/* Filters and Search */}
@@ -398,7 +441,7 @@ function MLAViewRecommendation() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
-                  placeholder="Search works, IA name, or AA letter..."
+                  placeholder="Search works, implementing agency..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -415,69 +458,60 @@ function MLAViewRecommendation() {
             </div>
           </div>
 
-          {/* Recommendations Table */}
+          {/* Works Table */}
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Sr No</TableHead>
                   <TableHead>Work Name</TableHead>
-                  <TableHead>IA Name</TableHead>
-                  <TableHead>MLA Letter</TableHead>
-                  <TableHead className="text-right">Recommended Amount</TableHead>
-                  <TableHead className="text-right">AA Amount</TableHead>
-                  <TableHead>AA Letter</TableHead>
-                  <TableHead className="text-right">Fund Disbursed</TableHead>
-                  <TableHead className="text-right">Pending Amount</TableHead>
+                  <TableHead>Work Code</TableHead>
+                  <TableHead>Implementing Agency</TableHead>
+
+                  <TableHead className="text-right">Gross Amount</TableHead>
+                  <TableHead className="text-right">Balance Amount</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Created Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRecommendations.map((rec, index) => (
-                  <TableRow key={rec.id}>
+                {filteredWorks.map((work, index) => (
+                  <TableRow key={work.id}>
                     <TableCell className="font-medium">{index + 1}</TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium text-sm">{rec.workName}</p>
-                        <p className="text-xs text-gray-500">{rec.workCode}</p>
+                        <p className="font-medium text-sm">{work.workName}</p>
+                        <p className="text-xs text-gray-500">{work.description}</p>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm">{rec.iaName}</span>
+                      <span className="text-sm">{work.workCode}</span>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-3 h-3 text-blue-500" />
-                        <span className="text-sm">{rec.mlaLetter}</span>
-                        <ExternalLink className="w-3 h-3 text-blue-500 cursor-pointer" />
+                      <div>
+                        <p className="text-sm font-medium">{work.implementingAgency?.fullname}</p>
+                        <p className="text-xs text-gray-500">{work.implementingAgency?.designation}</p>
                       </div>
                     </TableCell>
+
                     <TableCell className="text-right font-medium">
-                      {formatCurrency(rec.recommendedAmount)}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(rec.aaAmount)}
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-gray-500">
-                        {rec.aaLetter || 'Not Assigned'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right font-medium text-green-600">
-                      {formatCurrency(rec.fundDisbursed)}
+                      {formatCurrency(work.grossAmount)}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatCurrency(rec.pendingAmount)}
+                      {formatCurrency(work.balanceAmount)}
                     </TableCell>
-                    <TableCell>{getStatusBadge(rec.status)}</TableCell>
+                    <TableCell>{getStatusBadge(work.status)}</TableCell>
+                    <TableCell className="text-sm text-gray-500">
+                      {formatDate(work.createdAt)}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
-              {filteredRecommendations.length === 0 && (
+              {filteredWorks.length === 0 && (
                 <TableFooter>
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-gray-500">
-                      No recommendations found
+                    <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                      No works found
                     </TableCell>
                   </TableRow>
                 </TableFooter>
@@ -529,20 +563,20 @@ function MLAViewRecommendation() {
 
                     <FormField
                       control={form.control}
-                      name="implementingAgency"
+                      name="sector"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Implementing Agency</FormLabel>
+                          <FormLabel>Sector</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select IA" />
+                                <SelectValue placeholder="Select Sector" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {implementingAgencies.map((ia) => (
-                                <SelectItem key={ia.id} value={ia.id.toString()}>
-                                  {ia.name} ({ia.code})
+                              {sectors.map((sector) => (
+                                <SelectItem key={sector.id} value={sector.id.toString()}>
+                                  {sector.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -552,6 +586,31 @@ function MLAViewRecommendation() {
                       )}
                     />
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name="implementingAgency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Implementing Agency</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Implementing Agency" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {implementingAgencies.map((ia) => (
+                              <SelectItem key={ia.id} value={ia.id.toString()}>
+                                {ia.name} ({ia.code})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <FormField
                     control={form.control}
@@ -571,58 +630,31 @@ function MLAViewRecommendation() {
                     )}
                   />
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="recommendedWorkAmount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Recommended Work Amount (₹)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number"
-                              placeholder="Enter amount"
-                              {...field}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="scheme"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Scheme</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select Scheme" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {schemes.map((scheme) => (
-                                <SelectItem key={scheme.id} value={scheme.id.toString()}>
-                                  {scheme.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  <FormField
+                    control={form.control}
+                    name="recommendedAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Recommended Amount (₹)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number"
+                            placeholder="Enter amount"
+                            {...field}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <FormField
                     control={form.control}
                     name="recommendationLetter"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>MLA Recommendation Letter</FormLabel>
+                        <FormLabel>Recommendation Letter</FormLabel>
                         <FormControl>
                           <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
                             <input
@@ -660,20 +692,6 @@ function MLAViewRecommendation() {
                     )}
                   />
 
-                  <div className="bg-muted/50 p-4 rounded-lg">
-                    <h4 className="font-medium mb-2">MLA Details</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Name:</span>
-                        <div className="font-medium">Shri Dilip Dattatray Walse</div>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Constituency:</span>
-                        <div className="font-medium">Ambegaon Assembly Constituency</div>
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="flex justify-end space-x-4 pt-4">
                     <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
                       Cancel
@@ -705,6 +723,12 @@ function MLAViewRecommendation() {
                       </div>
                     </div>
                     <div>
+                      <span className="text-muted-foreground">Sector:</span>
+                      <div className="font-medium">
+                        {sectors.find(sector => sector.id.toString() === submittedData?.sector)?.name}
+                      </div>
+                    </div>
+                    <div>
                       <span className="text-muted-foreground">Implementing Agency:</span>
                       <div className="font-medium">
                         {implementingAgencies.find(ia => ia.id.toString() === submittedData?.implementingAgency)?.name}
@@ -712,32 +736,13 @@ function MLAViewRecommendation() {
                     </div>
                     <div>
                       <span className="text-muted-foreground">Amount:</span>
-                      <div className="font-medium">{formatCurrency(submittedData?.recommendedWorkAmount || 0)}</div>
+                      <div className="font-medium">{formatCurrency(submittedData?.recommendedAmount || 0)}</div>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground">Scheme:</span>
-                      <div className="font-medium">
-                        {schemes.find(s => s.id.toString() === submittedData?.scheme)?.name}
-                      </div>
-                    </div>
+
                   </div>
                   <div>
                     <span className="text-muted-foreground">Work Name:</span>
                     <div className="font-medium">{submittedData?.workName}</div>
-                  </div>
-                </div>
-
-                <div className="bg-muted/50 p-4 rounded-lg">
-                  <h4 className="font-medium mb-2">MLA Details</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Name:</span>
-                      <div className="font-medium">Shri Dilip Dattatray Walse</div>
-                    </div>
-    <div>
-                      <span className="text-muted-foreground">Constituency:</span>
-                      <div className="font-medium">Ambegaon Assembly Constituency</div>
-                    </div>
                   </div>
                 </div>
 

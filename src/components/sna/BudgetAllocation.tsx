@@ -1,825 +1,1663 @@
-// src/components/BudgetAllocation.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import axios from "axios";
 import {
   Card, CardHeader, CardTitle, CardContent,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell,
 } from "@/components/ui/table";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { RefreshCw, Plus, Users, UserCheck, UserX, AlertCircle, Edit } from "lucide-react";
 
-// shadcn/ui combobox primitives (searchable dropdown)
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
-import { ChevronsUpDown, Check } from "lucide-react";
+// Interfaces
+interface FinancialYear {
+  id: number;
+  name: string;
+}
 
-/* -------------------------------------------------------------------------- */
-/*                                   MOCKS                                    */
-/* -------------------------------------------------------------------------- */
+interface District {
+  id: number;
+  name: string;
+}
 
-type DemandRecord = {
-  districtCode: string;
-  district: string;
-  taluka: string;
-  planType: "HADP";
+interface Constituency {
+  id: number;
+  name: string;
+  districtId: number;
+}
+
+interface Taluka {
+  id: number;
+  name: string;
+  districtId: number;
+}
+
+interface MLA {
+  id: number;
+  mlaName: string;
+  party: string;
+  constituencyName: string;
+  constituencyId: number;
+  districtName: string;
+  status: string;
+}
+
+interface MLC {
+  id: number;
+  mlcName: string;
+  category: string;
+  region: string;
+  status: string;
+}
+
+interface Scheme {
+  id?: number;
+  name?: string;
+  schemeName?: string;
+}
+
+
+
+interface MLABudget {
+  id: number;
+  mlaId: number;
+  mlaName: string;
+  financialYearId: number;
   financialYear: string;
-  demandCode: string;
-  schemeCode: string;
+  districtId: number;
+  districtName: string;
+  constituencyId: number;
+  constituencyName: string;
+  schemeId: number;
   schemeName: string;
-  head: string;
-  demandAmount: number;
-  spillAmount: number;
-  remainingBalance: number;
-  status: "Approved" | "Pending" | "Rejected";
-};
-
-export const hadpMock: DemandRecord[] = [
-  {
-    districtCode: "HADP-AMB",
-    district: "Pune",
-    taluka: "Ambegaon",
-    planType: "HADP",
-    financialYear: "2025-26",
-    demandCode: "Ambegaon",
-    schemeCode: "HADP01",
-    schemeName: "HADP Special Scheme",
-    head: "—",
-    demandAmount: 20000,
-    spillAmount: 98.18,
-    remainingBalance: 101.82,
-    status: "Approved"
-  },
-  {
-    districtCode: "HADP-JUN",
-    district: "Pune",
-    taluka: "Junnar",
-    planType: "HADP",
-    financialYear: "2025-26",
-    demandCode: "Junnar",
-    schemeCode: "HADP02",
-    schemeName: "HADP Development Grant",
-    head: "—",
-    demandAmount: 20000,
-    spillAmount: 57.29,
-    remainingBalance: 142.71,
-    status: "Approved"
-  },
-  {
-    districtCode: "HADP-MAW",
-    district: "Pune",
-    taluka: "Mawal",
-    planType: "HADP",
-    financialYear: "2025-26",
-    demandCode: "Mawal",
-    schemeCode: "HADP03",
-    schemeName: "HADP Rural Infrastructure",
-    head: "—",
-    demandAmount: 20000,
-    spillAmount: 114.18,
-    remainingBalance: 85.82,
-    status: "Approved"
-  },
-  {
-    districtCode: "HADP-BHO",
-    district: "Pune",
-    taluka: "Bhor",
-    planType: "HADP",
-    financialYear: "2025-26",
-    demandCode: "Bhor",
-    schemeCode: "HADP04",
-    schemeName: "HADP Infrastructure Upgrade",
-    head: "—",
-    demandAmount: 20000,
-    spillAmount: 52.15,
-    remainingBalance: 147.85,
-    status: "Approved"
-  },
-  {
-    districtCode: "HADP-MUL",
-    district: "Pune",
-    taluka: "Mulshi",
-    planType: "HADP",
-    financialYear: "2025-26",
-    demandCode: "Mulshi",
-    schemeCode: "HADP05",
-    schemeName: "HADP Special Grant",
-    head: "—",
-    demandAmount: 20000,
-    spillAmount: 60,
-    remainingBalance: 140.00,
-    status: "Approved"
-  },
-  {
-    districtCode: "HADP-VEL",
-    district: "Pune",
-    taluka: "Velhe",
-    planType: "HADP",
-    financialYear: "2025-26",
-    demandCode: "Velhe",
-    schemeCode: "HADP06",
-    schemeName: "HADP Village Development",
-    head: "—",
-    demandAmount: 20000,
-    spillAmount: 65,
-    remainingBalance: 135.00,
-    status: "Approved"
-  },
-  {
-    districtCode: "HADP-PUR",
-    district: "Pune",
-    taluka: "Purandar",
-    planType: "HADP",
-    financialYear: "2025-26",
-    demandCode: "Purandar",
-    schemeCode: "HADP07",
-    schemeName: "HADP Sustainable Growth",
-    head: "—",
-    demandAmount: 20000,
-    spillAmount: 22.29,
-    remainingBalance: 177.71,
-    status: "Approved"
-  },
-  {
-    districtCode: "HADP-KHE",
-    district: "Pune",
-    taluka: "Khed",
-    planType: "HADP",
-    financialYear: "2025-26",
-    demandCode: "Khed",
-    schemeCode: "HADP08",
-    schemeName: "HADP Rural Roads",
-    head: "—",
-    demandAmount: 20000,
-    spillAmount: 101.98,
-    remainingBalance: 98.02,
-    status: "Approved"
-  },
-  {
-    districtCode: "HADP-HAW",
-    district: "Pune",
-    taluka: "Haweli",
-    planType: "HADP",
-    financialYear: "2025-26",
-    demandCode: "Haweli",
-    schemeCode: "HADP09",
-    schemeName: "HADP Green Pune",
-    head: "—",
-    demandAmount: 20000,
-    spillAmount: 33.54,
-    remainingBalance: 166.46,
-    status: "Approved"
-  },
-  {
-    districtCode: "HADP-SHI",
-    district: "Pune",
-    taluka: "Shirur",
-    planType: "HADP",
-    financialYear: "2025-26",
-    demandCode: "Shirur",
-    schemeCode: "HADP10",
-    schemeName: "HADP Urban-Rural Link",
-    head: "—",
-    demandAmount: 10000,
-    spillAmount: 49.98,
-    remainingBalance: 50.02,
-    status: "Approved"
-  },
-  {
-    districtCode: "HADP-DAU",
-    district: "Pune",
-    taluka: "Daund",
-    planType: "HADP",
-    financialYear: "2025-26",
-    demandCode: "Daund",
-    schemeCode: "HADP11",
-    schemeName: "HADP Development Package",
-    head: "—",
-    demandAmount: 10000,
-    spillAmount: 105,
-    remainingBalance: -5.00,
-    status: "Approved"
-  }
-];
-
-const mlaMlcData = {
-  financialYear: "2025-2026",
-  planType: "ML",
-  data: [
-    { district: "PUNE", taluka: "Pimpri", type: "MLA", term: 15, name: "Anna Dadu Bansode", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 20000 },
-    { district: "PUNE", taluka: "Baramati", type: "MLA", term: 14, name: "Ajit Anantrao Pawar", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 10000 },
-    { district: "PUNE", taluka: "Khed Alandi", type: "MLA", term: 15, name: "Babaji Ramchandra Kale", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 10000 },
-    { district: "PUNE", taluka: "Vadgaon Sheri", type: "MLA", term: 14, name: "Bapusaheb Tukaram Pathare", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 0 },
-    { district: "PUNE", taluka: "Khadakwasala", type: "MLA", term: 14, name: "Bhimrao Dhondiba Tapkir", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 0 },
-    { district: "PUNE", taluka: "Bhosari", type: "MLA", term: 15, name: "Mahesh Landge", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 0 },
-    { district: "PUNE", taluka: "Hadapsar", type: "MLA", term: 15, name: "Chetan Tupe", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 0 },
-    { district: "PUNE", taluka: "Kothrud", type: "MLA", term: 15, name: "Chandrakant Bachhu Patil", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 0 },
-    { district: "PUNE", taluka: "Indapur", type: "MLA", term: 15, name: "Dattatraya Vithoba Bharne", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 0 },
-    { district: "PUNE", taluka: "Shirur", type: "MLA", term: 14, name: "Dnyaneshwar Katke", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 0 },
-    { district: "PUNE", taluka: "Ambegaon", type: "MLA", term: 14, name: "Dilip Walse-Patil", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 0 },
-    { district: "PUNE", taluka: "Kasba Peth", type: "MLA", term: 15, name: "Hemant Narayan Rasane", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 0 },
-    { district: "PUNE", taluka: "Chinchwad", type: "MLA", term: 14, name: "Shankar Jagtap", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 0 },
-    { district: "PUNE", taluka: "Bhor", type: "MLA", term: 15, name: "Shankar Hiraman Mandekar", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 0 },
-    { district: "PUNE", taluka: "Shivajinagar", type: "MLA", term: 15, name: "Siddharth Shirole", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 0 },
-    { district: "PUNE", taluka: "Pune Cantonment", type: "MLA", term: 14, name: "Suni Dnyandev Kamble", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 0 },
-    { district: "PUNE", taluka: "Maval", type: "MLA", term: 15, name: "Sunil Shankarrao Shelke", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 0 },
-    { district: "PUNE", taluka: "Parvati", type: "MLA", term: 15, name: "Madhuri Satish Misal", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 0 },
-    { district: "PUNE", taluka: "Daund", type: "MLA", term: 14, name: "Rahul Subhashrao Kul", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 0 },
-    { district: "PUNE", taluka: "Junnar", type: "MLA", term: 14, name: "Sharad Sonavane", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 0 },
-    { district: "PUNE", taluka: "Purandar", type: "MLA", term: 14, name: "Vijay Shivtare", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 0 },
-    // one MLC sample
-    { district: "PUNE", taluka: "PUNE", type: "MLC", term: 14, name: "Yogesh Tilekar", schemeName: "45150012 53 MLA/MLC LOCAL DEVELOPMENT PROGRAMME", budget: 50000, fundUtilized: 0, balance: 50000, pendingDemands: 0 }
-  ]
-};
-
-/* -------------------------------------------------------------------------- */
-/*                                   UTILS                                    */
-/* -------------------------------------------------------------------------- */
-
-type Plan = "ML-MLA" | "ML-MLC" | "HADP";
-
-function uniq<T>(arr: T[]) { return Array.from(new Set(arr)); }
-function cn(...c: (string | false | null | undefined)[]) { return c.filter(Boolean).join(" "); }
-function toCurrency(n: number | null | undefined) {
-  if (n === null || n === undefined) return "—";
-  return `₹${(n || 0).toLocaleString()}`;
+  allocatedLimit: number;
+  remarks: string;
+  status: string;
+  createdAt: string;
 }
 
-/* Searchable combobox */
-function SearchableSelect({
-  value,
-  onValueChange,
-  options,
-  placeholder = "Select…",
-  keepAllFirst = false,
-  className,
-}: {
-  value: string;
-  onValueChange: (v: string) => void;
-  options: string[];
-  placeholder?: string;
-  keepAllFirst?: boolean;
-  className?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const sorted = useMemo(() => {
-    const arr = [...options];
-    const hasAll = keepAllFirst && arr.includes("All");
-    const rest = (keepAllFirst ? arr.filter(o => o !== "All") : arr)
-      .sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
-    return hasAll ? ["All", ...rest] : rest;
-  }, [options, keepAllFirst]);
-
-  const display = value || placeholder;
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn("w-full justify-between h-9 text-xs", className)}
-        >
-          <span className={cn(!value && "text-muted-foreground")}>{display}</span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 opacity-60" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="p-0 w-[--radix-popover-trigger-width] min-w-[180px]" align="start">
-        <Command>
-          <CommandInput placeholder="Type to search…" className="h-9 text-xs" />
-          <CommandEmpty>No results found.</CommandEmpty>
-          <CommandGroup className="max-h-64 overflow-auto">
-            {sorted.map(opt => {
-              const selected = value === opt;
-              return (
-                <CommandItem
-                  key={opt}
-                  value={opt}
-                  onSelect={(val) => { onValueChange(val); setOpen(false); }}
-                  className="cursor-pointer text-xs"
-                >
-                  <Check className={cn("mr-2 h-4 w-4", selected ? "opacity-100" : "opacity-0")} />
-                  <span className="truncate">{opt}</span>
-                </CommandItem>
-              );
-            })}
-          </CommandGroup>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
+interface MLCBudget {
+  id: number;
+  mlcId: number;
+  mlcName: string;
+  financialYearId: number;
+  financialYear: string;
+  districtId: number;
+  districtName: string;
+  schemeId: number;
+  schemeName: string;
+  allocatedLimit: number;
+  remarks: string;
+  status: string;
+  createdAt: string;
 }
 
-/* -------------------------------------------------------------------------- */
-/*                              MAIN COMPONENT                                */
-/* -------------------------------------------------------------------------- */
+interface HADPBudget {
+  id: number;
+  financialYearId: number;
+  financialYear: string;
+  districtId: number;
+  districtName: string;
+  talukaId: number;
+  talukaName: string;
+  schemeId: number;
+  schemeName: string;
+  allocatedLimit: number;
+  remarks: string;
+  status: string;
+  createdAt: string;
+}
+
+interface BudgetForm {
+  financialYearId: number | null;
+  districtId: number | null;
+  constituencyId: number | null;
+  talukaId: number | null;
+  schemeId: number | null;
+  selectedMLAs: number[];
+  selectedMLCs: number[];
+  allocatedLimit: string;
+  remarks: string;
+  mlaSelectionMode: 'direct' | 'constituency';
+}
 
 const BudgetAllocation: React.FC = () => {
-  /* ------------------------------- State -------------------------------- */
-  const [planType, setPlanType] = useState<Plan>("ML-MLA");
+  const { toast } = useToast();
 
-  // ML-MLA
-  const [fyML, setFyML] = useState<string>("");
-  const [districtML, setDistrictML] = useState<string>("");
-  const [constituencyML, setConstituencyML] = useState<string>("");
-  const [mlaName, setMlaName] = useState<string>("");
+  // State for dropdown data
+  const [financialYears, setFinancialYears] = useState<FinancialYear[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [constituencies, setConstituencies] = useState<Constituency[]>([]);
+  const [talukas, setTalukas] = useState<Taluka[]>([]);
+  const [schemes, setSchemes] = useState<(Scheme | string)[]>([]);
+  const [mlas, setMlas] = useState<MLA[]>([]);
+  const [mlcs, setMlcs] = useState<MLC[]>([]);
 
-  // ML-MLC
-  const [fyMLC, setFyMLC] = useState<string>("");
-  const [districtMLC, setDistrictMLC] = useState<string>("");
-  const [mlcName, setMlcName] = useState<string>("");
+  // State for budget data
+  const [mlaBudgets, setMlaBudgets] = useState<MLABudget[]>([]);
+  const [mlcBudgets, setMlcBudgets] = useState<MLCBudget[]>([]);
+  const [hadpBudgets, setHadpBudgets] = useState<HADPBudget[]>([]);
 
-  // HADP
-  const [fyHADP, setFyHADP] = useState<string>("");
-  const [districtHADP, setDistrictHADP] = useState<string>("");
-  const [talukaHADP, setTalukaHADP] = useState<string>("");
+  // State for form
+  const [form, setForm] = useState<BudgetForm>({
+    financialYearId: null,
+    districtId: null,
+    constituencyId: null,
+    talukaId: null,
+    schemeId: null,
+    selectedMLAs: [],
+    selectedMLCs: [],
+    allocatedLimit: "",
+    remarks: "",
+    mlaSelectionMode: 'direct'
+  });
 
-  // Common
-  const [amount, setAmount] = useState<string>("");
+  // Loading states
+  const [loading, setLoading] = useState(true);
+  const [loadingConstituencies, setLoadingConstituencies] = useState(false);
+  const [loadingTalukas, setLoadingTalukas] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  // Local stores for allocated limits (since no APIs)
-  type RowMLAStore = { id: string; fy: string; district: string; constituency: string; mlaName: string; budget: number; active: boolean; };
-  type RowMLCStore = { id: string; fy: string; district: string; mlcName: string; budget: number; active: boolean; };
-  type RowHADPStore = { id: string; district: string; taluka: string; budget: number; active: boolean; };
-  const [storeMLA, setStoreMLA] = useState<RowMLAStore[]>([]);
-  const [storeMLC, setStoreMLC] = useState<RowMLCStore[]>([]);
-  const [storeHADP, setStoreHADP] = useState<RowHADPStore[]>([]);
+  // Filter states
+  const [selectedPlanType, setSelectedPlanType] = useState<'MLA' | 'MLC' | 'HADP'>('MLA');
+  const [filterFinancialYear, setFilterFinancialYear] = useState<string>('All');
+  const [filterDistrict, setFilterDistrict] = useState<string>('All');
+  
+  // Budget fetch states
+  const [selectedFetchFinancialYear, setSelectedFetchFinancialYear] = useState<number | null>(null);
+  
+  // Popup form states
+  const [showMLAPopup, setShowMLAPopup] = useState(false);
+  const [showMLCPopup, setShowMLCPopup] = useState(false);
+  const [showHADPPopup, setShowHADPPopup] = useState(false);
+  const [showAddBudgetPopup, setShowAddBudgetPopup] = useState(false);
+  const [selectedBudgetForEdit, setSelectedBudgetForEdit] = useState<any>(null);
 
-  /* ----------------------------- Options (mock) -------------------------- */
-  const mlaData = useMemo(() => mlaMlcData.data.filter(d => d.type === "MLA"), []);
-  const mlcData = useMemo(() => mlaMlcData.data.filter(d => d.type === "MLC"), []);
+  // Fetch financial years
+  const fetchFinancialYears = async () => {
+    try {
+      const baseURL = import.meta.env.VITE_API_BASE_URL;
+      const token = localStorage.getItem("token");
+      
+      const response = await axios.get(`${baseURL}/api/dropdown/financial-years`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      setFinancialYears(response.data || []);
+    } catch (err: any) {
+      console.error('Error fetching financial years:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch financial years",
+        variant: "destructive"
+      });
+    }
+  };
 
-  // ML-MLA options
-  const fyOptionsML = useMemo(() => uniq([mlaMlcData.financialYear]), []);
-  const districtOptionsML = useMemo(() => uniq(mlaData.map(d => d.district)).sort(), [mlaData]);
-  const constituencyOptionsML = useMemo(() => {
-    const filtered = mlaData.filter(d => !districtML || d.district === districtML);
-    return uniq(filtered.map(d => d.taluka)).sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
-  }, [mlaData, districtML]);
-  const mlaNameOptions = useMemo(() => {
-    const filtered = mlaData.filter(d =>
-      (!districtML || d.district === districtML) &&
-      (!constituencyML || d.taluka === constituencyML)
-    );
-    return uniq(filtered.map(d => d.name)).sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
-  }, [mlaData, districtML, constituencyML]);
+  // Fetch districts
+  const fetchDistricts = async () => {
+    try {
+      const baseURL = import.meta.env.VITE_API_BASE_URL;
+      const token = localStorage.getItem("token");
+      
+      const response = await axios.get(`${baseURL}/api/dropdown/districts`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      setDistricts(response.data || []);
+    } catch (err: any) {
+      console.error('Error fetching districts:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch districts",
+        variant: "destructive"
+      });
+    }
+  };
 
-  // ML-MLC options
-  const fyOptionsMLC = useMemo(() => uniq([mlaMlcData.financialYear]), []);
-  const districtOptionsMLC = useMemo(() => uniq(mlcData.map(d => d.district)).sort(), [mlcData]);
-  const mlcNameOptions = useMemo(() => {
-    const filtered = mlcData.filter(d => !districtMLC || d.district === districtMLC);
-    return uniq(filtered.map(d => d.name)).sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
-  }, [mlcData, districtMLC]);
+  // Fetch schemes
+  const fetchSchemes = async () => {
+    try {
+      const baseURL = import.meta.env.VITE_API_BASE_URL;
+      const token = localStorage.getItem("token");
+      
+      const response = await axios.get(`${baseURL}/api/dropdown/schemes`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      setSchemes(response.data || []);
+    } catch (err: any) {
+      console.error('Error fetching schemes:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch schemes",
+        variant: "destructive"
+      });
+    }
+  };
 
-  // HADP options
-  const fyOptionsHADP = useMemo(() => uniq(hadpMock.map(h => h.financialYear)), []);
-  const districtOptionsHADP = useMemo(() => uniq(hadpMock.map(h => h.district)).sort(), []);
-  const talukaOptionsHADP = useMemo(() => {
-    const filtered = hadpMock.filter(h => !districtHADP || h.district === districtHADP);
-    return uniq(filtered.map(h => h.taluka)).sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
-  }, [districtHADP]);
 
-  /* --------------------------- Effects / Resets -------------------------- */
+
+  // Fetch constituencies by district
+  const fetchConstituencies = async (districtId: number) => {
+    try {
+      setLoadingConstituencies(true);
+      const baseURL = import.meta.env.VITE_API_BASE_URL;
+      const token = localStorage.getItem("token");
+      
+      const response = await axios.get(`${baseURL}/api/dropdown/constituencies/by-district/${districtId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      setConstituencies(response.data || []);
+    } catch (err: any) {
+      console.error('Error fetching constituencies:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch constituencies",
+        variant: "destructive"
+      });
+      setConstituencies([]);
+    } finally {
+      setLoadingConstituencies(false);
+    }
+  };
+
+  // Fetch talukas by district
+  const fetchTalukas = async (districtId: number) => {
+    try {
+      setLoadingTalukas(true);
+      const baseURL = import.meta.env.VITE_API_BASE_URL;
+      const token = localStorage.getItem("token");
+      
+      const response = await axios.get(`${baseURL}/api/dropdown/talukas/by-district/${districtId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      setTalukas(response.data || []);
+    } catch (err: any) {
+      console.error('Error fetching talukas:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch talukas",
+        variant: "destructive"
+      });
+      setTalukas([]);
+    } finally {
+      setLoadingTalukas(false);
+    }
+  };
+
+  // Fetch MLAs by district
+  const fetchMLAsByDistrict = async (districtId: number) => {
+    try {
+      const baseURL = import.meta.env.VITE_API_BASE_URL;
+      const token = localStorage.getItem("token");
+      
+      const response = await axios.get(`${baseURL}/api/admin/mlas/by-district/${districtId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const mlaData = (response.data || []).map((mla: any) => ({
+        id: mla.id,
+        mlaName: mla.mlaName,
+        party: mla.party,
+        constituencyName: mla.constituencyName,
+        constituencyId: mla.constituencyId,
+        districtName: mla.districtName,
+        status: mla.status
+      }));
+      
+      setMlas(mlaData);
+    } catch (err: any) {
+      console.error('Error fetching MLAs by district:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch MLAs for selected district",
+        variant: "destructive"
+      });
+      setMlas([]);
+    }
+  };
+
+  // Fetch MLCs
+  const fetchMLCs = async () => {
+    try {
+      const baseURL = import.meta.env.VITE_API_BASE_URL;
+      const token = localStorage.getItem("token");
+      
+      const response = await axios.get(`${baseURL}/api/admin/mlc`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const mlcData = (response.data || []).map((mlc: any) => ({
+        id: mlc.id,
+        mlcName: mlc.mlcName,
+        category: mlc.category,
+        region: mlc.region,
+        status: mlc.status
+      }));
+      
+      setMlcs(mlcData);
+    } catch (err: any) {
+      console.error('Error fetching MLCs:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch MLCs",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Fetch MLA budgets
+  const fetchMLABudgets = async (financialYearId?: number) => {
+    try {
+      const baseURL = import.meta.env.VITE_API_BASE_URL;
+      const token = localStorage.getItem("token");
+      
+      if (!token) {
+        toast({
+          title: "Error",
+          description: "Authentication token not found",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const params = financialYearId ? { financialYearId } : {};
+      
+      const response = await axios.get(`${baseURL}/api/mla-budget/fetch`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        params
+      });
+      
+      setMlaBudgets(response.data || []);
+    } catch (err: any) {
+      console.error('Error fetching MLA budgets:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch MLA budgets",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Fetch MLC budgets
+  const fetchMLCBudgets = async (financialYearId?: number) => {
+    try {
+      const baseURL = import.meta.env.VITE_API_BASE_URL;
+      const token = localStorage.getItem("token");
+      
+      if (!token) {
+        toast({
+          title: "Error",
+          description: "Authentication token not found",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const params = financialYearId ? { financialYearId } : {};
+      
+      const response = await axios.get(`${baseURL}/api/mlc-budget/getMLCBudgets`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        params
+      });
+      
+      setMlcBudgets(response.data || []);
+    } catch (err: any) {
+      console.error('Error fetching MLC budgets:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch MLC budgets",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Fetch HADP budgets
+  const fetchHADPBudgets = async () => {
+    try {
+      const baseURL = import.meta.env.VITE_API_BASE_URL;
+      const token = localStorage.getItem("token");
+      
+      const response = await axios.get(`${baseURL}/api/hadp-budget/fetch`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      setHadpBudgets(response.data || []);
+    } catch (err: any) {
+      console.error('Error fetching HADP budgets:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch HADP budgets",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Handle district change
+  const handleDistrictChange = (districtId: string) => {
+    const selectedDistrictId = parseInt(districtId);
+    setForm(prev => ({ 
+      ...prev, 
+      districtId: selectedDistrictId, 
+      constituencyId: null,
+      talukaId: null,
+      selectedMLAs: [],
+      selectedMLCs: []
+    }));
+    
+    if (selectedDistrictId) {
+      if (selectedPlanType === 'MLA') {
+        fetchConstituencies(selectedDistrictId);
+        fetchMLAsByDistrict(selectedDistrictId);
+      } else if (selectedPlanType === 'HADP') {
+        fetchTalukas(selectedDistrictId);
+      } else if (selectedPlanType === 'MLC') {
+        // For MLC, we might need to fetch MLCs by district if needed
+      }
+    } else {
+      setConstituencies([]);
+      setTalukas([]);
+      setMlas([]);
+      setMlcs([]);
+    }
+  };
+
+  // Handle MLA selection
+  const handleMLASelection = (mlaId: number, checked: boolean) => {
+    setForm(prev => ({
+      ...prev,
+      selectedMLAs: checked 
+        ? [...prev.selectedMLAs, mlaId]
+        : prev.selectedMLAs.filter(id => id !== mlaId)
+    }));
+  };
+
+  // Handle MLC selection
+  const handleMLCSelection = (mlcId: number, checked: boolean) => {
+    setForm(prev => ({
+      ...prev,
+      selectedMLCs: checked 
+        ? [...prev.selectedMLCs, mlcId]
+        : prev.selectedMLCs.filter(id => id !== mlcId)
+    }));
+  };
+
+  // Handle budget editing
+  const handleEditBudget = (budget: any, type: 'MLA' | 'MLC' | 'HADP') => {
+    setSelectedBudgetForEdit(budget);
+    if (type === 'MLA') {
+      setShowMLAPopup(true);
+    } else if (type === 'MLC') {
+      setShowMLCPopup(true);
+    } else if (type === 'HADP') {
+      setShowHADPPopup(true);
+    }
+  };
+
+  // Handle budget update
+  const handleUpdateBudget = async (type: 'MLA' | 'MLC' | 'HADP') => {
+    if (!selectedBudgetForEdit || !form.allocatedLimit) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter an allocated limit",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const baseURL = import.meta.env.VITE_API_BASE_URL;
+      const token = localStorage.getItem("token");
+      const allocatedLimit = parseFloat(form.allocatedLimit);
+
+      if (type === 'MLA') {
+        await axios.put(`${baseURL}/api/mla-budget/update/${selectedBudgetForEdit.id}`, {
+          allocatedLimit
+        }, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        await fetchMLABudgets(selectedFetchFinancialYear || undefined);
+        setShowMLAPopup(false);
+      } else if (type === 'MLC') {
+        await axios.put(`${baseURL}/api/mlc-budget/update/${selectedBudgetForEdit.id}`, {
+          allocatedLimit
+        }, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        await fetchMLCBudgets(selectedFetchFinancialYear || undefined);
+        setShowMLCPopup(false);
+      } else if (type === 'HADP') {
+        await axios.put(`${baseURL}/api/hadp-budget/update/${selectedBudgetForEdit.id}`, {
+          allocatedLimit
+        }, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        await fetchHADPBudgets();
+        setShowHADPPopup(false);
+      }
+
+      toast({
+        title: "Success",
+        description: `${type} budget updated successfully`,
+        variant: "default"
+      });
+
+      setSelectedBudgetForEdit(null);
+      setForm(prev => ({ ...prev, allocatedLimit: "" }));
+
+    } catch (err: any) {
+      console.error('Error updating budget:', err);
+      const errorMessage = err.response?.data?.message || "Failed to update budget";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Handle form submission
+  const handleSubmit = async () => {
+    if (!form.financialYearId || !form.districtId || !form.allocatedLimit || !form.schemeId || 
+        form.districtId === 0 || form.financialYearId === 0) {
+      
+      // Additional validation for MLA constituency mode
+      if (selectedPlanType === 'MLA' && form.mlaSelectionMode === 'constituency' && !form.constituencyId) {
+        toast({
+          title: "Validation Error",
+          description: "Please select a constituency for MLA budget allocation",
+          variant: "destructive"
+        });
+        return;
+      }
+      toast({
+        title: "Validation Error",
+        description: "Please fill all required fields (Financial Year, District, Scheme, Allocated Limit)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (selectedPlanType === 'MLA' && form.selectedMLAs.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please select at least one MLA",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (selectedPlanType === 'MLC' && form.selectedMLCs.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please select at least one MLC",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (selectedPlanType === 'HADP' && !form.talukaId) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a taluka for HADP allocation",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const baseURL = import.meta.env.VITE_API_BASE_URL;
+      const token = localStorage.getItem("token");
+      const allocatedLimit = parseFloat(form.allocatedLimit);
+
+      if (selectedPlanType === 'MLA') {
+        // Submit MLA budgets
+        const mlaPromises = form.selectedMLAs.map(mlaId => {
+          const payload = {
+            financialYearId: form.financialYearId,
+            mlaId,
+            constituencyId: form.constituencyId,
+            allocatedLimit,
+            remarks: form.remarks,
+            schemeId: form.schemeId
+          };
+          
+          return axios.post(`${baseURL}/api/mla-budget/save`, payload, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+        });
+
+        await Promise.all(mlaPromises);
+        await fetchMLABudgets(selectedFetchFinancialYear || undefined);
+        
+        toast({
+          title: "Success",
+          description: `Budget allocated to ${form.selectedMLAs.length} MLA(s) successfully`,
+          variant: "default"
+        });
+      } else if (selectedPlanType === 'MLC') {
+        // Submit MLC budgets
+        const mlcPromises = form.selectedMLCs.map(mlcId => {
+          const payload = {
+            financialYearId: form.financialYearId,
+            mlcId,
+            schemeId: form.schemeId,
+            allocatedLimit,
+            remarks: form.remarks
+          };
+          
+          return axios.post(`${baseURL}/api/mlc-budget/saveMLCBudget`, payload, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+        });
+
+        await Promise.all(mlcPromises);
+        await fetchMLCBudgets(selectedFetchFinancialYear || undefined);
+        
+        toast({
+          title: "Success",
+          description: `Budget allocated to ${form.selectedMLCs.length} MLC(s) successfully`,
+          variant: "default"
+        });
+      } else if (selectedPlanType === 'HADP') {
+        // Submit HADP budget
+        const payload = {
+          schemeId: form.schemeId,
+          districtId: form.districtId,
+          talukaId: form.talukaId,
+          financialYearId: form.financialYearId,
+          allocatedLimit,
+          remarks: form.remarks
+        };
+        
+        await axios.post(`${baseURL}/api/hadp-budget/allocate`, payload, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        await fetchHADPBudgets();
+        
+        toast({
+          title: "Success",
+          description: "HADP budget allocated successfully",
+          variant: "default"
+        });
+      }
+
+      // Reset form
+      setForm({
+        financialYearId: null,
+        districtId: null,
+        constituencyId: null,
+        talukaId: null,
+        schemeId: null,
+        selectedMLAs: [],
+        selectedMLCs: [],
+        allocatedLimit: "",
+        remarks: "",
+        mlaSelectionMode: 'direct'
+      });
+      setConstituencies([]);
+      setTalukas([]);
+      
+      // Close popup
+      setShowAddBudgetPopup(false);
+
+    } catch (err: any) {
+      console.error('Error allocating budget:', err);
+      const errorMessage = err.response?.data?.message || "Failed to allocate budget";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Filtered data
+  const filteredMLAs = useMemo(() => {
+    let filtered = mlas;
+    
+    if (filterDistrict !== 'All') {
+      filtered = filtered.filter(mla => mla.districtName === filterDistrict);
+    }
+    
+    return filtered;
+  }, [mlas, filterDistrict]);
+
+  const filteredMLCs = useMemo(() => {
+    let filtered = mlcs;
+    
+    if (filterDistrict !== 'All') {
+      filtered = filtered.filter(mlc => mlc.region === filterDistrict);
+    }
+    
+    return filtered;
+  }, [mlcs, filterDistrict]);
+
+  const filteredMLABudgets = useMemo(() => {
+    let filtered = mlaBudgets;
+    
+    if (filterFinancialYear !== 'All') {
+      filtered = filtered.filter(budget => budget.financialYear === filterFinancialYear);
+    }
+    
+    if (filterDistrict !== 'All') {
+      filtered = filtered.filter(budget => budget.districtName === filterDistrict);
+    }
+    
+    return filtered;
+  }, [mlaBudgets, filterFinancialYear, filterDistrict]);
+
+  const filteredMLCBudgets = useMemo(() => {
+    let filtered = mlcBudgets;
+    
+    if (filterFinancialYear !== 'All') {
+      filtered = filtered.filter(budget => budget.financialYear === filterFinancialYear);
+    }
+    
+    if (filterDistrict !== 'All') {
+      filtered = filtered.filter(budget => budget.districtName === filterDistrict);
+    }
+    
+    return filtered;
+  }, [mlcBudgets, filterFinancialYear, filterDistrict]);
+
+  const filteredHADPBudgets = useMemo(() => {
+    let filtered = hadpBudgets;
+    
+    if (filterFinancialYear !== 'All') {
+      filtered = filtered.filter(budget => budget.financialYear === filterFinancialYear);
+    }
+    
+    if (filterDistrict !== 'All') {
+      filtered = filtered.filter(budget => budget.districtName === filterDistrict);
+    }
+    
+    return filtered;
+  }, [hadpBudgets, filterFinancialYear, filterDistrict]);
+
+  // Get unique financial years and districts for filters
+  const availableFinancialYears = useMemo(() => {
+    const allYears = [
+      ...mlaBudgets.map(b => b.financialYear),
+      ...mlcBudgets.map(b => b.financialYear),
+      ...hadpBudgets.map(b => b.financialYear)
+    ];
+    return ['All', ...Array.from(new Set(allYears)).sort()];
+  }, [mlaBudgets, mlcBudgets, hadpBudgets]);
+
+  const availableDistricts = useMemo(() => {
+    const allDistricts = [
+      ...mlaBudgets.map(b => b.districtName),
+      ...mlcBudgets.map(b => b.districtName),
+      ...hadpBudgets.map(b => b.districtName)
+    ];
+    return ['All', ...Array.from(new Set(allDistricts)).sort()];
+  }, [mlaBudgets, mlcBudgets, hadpBudgets]);
+
+  // Initialize data
   useEffect(() => {
-    setAmount("");
-    if (planType === "ML-MLA") {
-      setFyML(fyOptionsML[0] || "");
-      setDistrictML(districtOptionsML[0] || "");
-      setConstituencyML("");
-      setMlaName("");
-    } else if (planType === "ML-MLC") {
-      setFyMLC(fyOptionsMLC[0] || "");
-      setDistrictMLC(districtOptionsMLC[0] || "");
-      setMlcName("");
-    } else {
-      setFyHADP(fyOptionsHADP[0] || "");
-      setDistrictHADP(districtOptionsHADP[0] || "");
-      setTalukaHADP("");
+    const initializeData = async () => {
+      setLoading(true);
+      await Promise.all([
+        fetchFinancialYears(),
+        fetchDistricts(),
+        fetchSchemes(),
+        fetchMLCs(),
+        fetchHADPBudgets()
+      ]);
+      setLoading(false);
+    };
+    initializeData();
+  }, []);
+
+  // Fetch budgets when financial year is selected
+  const handleFetchBudgets = async () => {
+    if (!selectedFetchFinancialYear) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a financial year to fetch budgets",
+        variant: "destructive"
+      });
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planType]);
 
-  useEffect(() => { setConstituencyML(""); setMlaName(""); }, [districtML]);
-  useEffect(() => { setMlaName(""); }, [constituencyML]);
-  useEffect(() => { setTalukaHADP(""); }, [districtHADP]);
-
-  /* ------------------------------- Lookups -------------------------------- */
-  const mapMLA = useMemo(() => {
-    const m = new Map<string, RowMLAStore>();
-    storeMLA.forEach(r => m.set(r.id, r));
-    return m;
-  }, [storeMLA]);
-
-  const mapMLC = useMemo(() => {
-    const m = new Map<string, RowMLCStore>();
-    storeMLC.forEach(r => m.set(r.id, r));
-    return m;
-  }, [storeMLC]);
-
-  const mapHADP = useMemo(() => {
-    const m = new Map<string, RowHADPStore>();
-    storeHADP.forEach(r => m.set(r.id, r));
-    return m;
-  }, [storeHADP]);
-
-  /* ------------------------------- Actions -------------------------------- */
-  const allocate = () => {
-    const amt = Number(amount);
-    if (!amt || amt <= 0) return alert("Please enter a valid Amount.");
-
-    if (planType === "ML-MLA") {
-      if (!fyML || !districtML || !constituencyML || !mlaName) {
-        return alert("Please select FY, District, Constituency and MLA Name.");
-      }
-      const id = `${fyML}|${districtML}|${constituencyML}|${mlaName}`;
-      setStoreMLA(prev => {
-        const idx = prev.findIndex(r => r.id === id);
-        if (idx >= 0) {
-          const copy = [...prev];
-          copy[idx] = { ...copy[idx], budget: amt };
-          return copy;
-        }
-        return [...prev, { id, fy: fyML, district: districtML, constituency: constituencyML, mlaName, budget: amt, active: true }];
-      });
-      setAmount("");
-    } else if (planType === "ML-MLC") {
-      if (!fyMLC || !districtMLC || !mlcName) {
-        return alert("Please select FY, District and MLC Name.");
-      }
-      const id = `${fyMLC}|${districtMLC}|${mlcName}`;
-      setStoreMLC(prev => {
-        const idx = prev.findIndex(r => r.id === id);
-        if (idx >= 0) {
-          const copy = [...prev];
-          copy[idx] = { ...copy[idx], budget: amt };
-          return copy;
-        }
-        return [...prev, { id, fy: fyMLC, district: districtMLC, mlcName, budget: amt, active: true }];
-      });
-      setAmount("");
-    } else {
-      if (!fyHADP || !districtHADP || !talukaHADP) {
-        return alert("Please select FY, District and Taluka.");
-      }
-      const id = `${districtHADP}|${talukaHADP}`;
-      setStoreHADP(prev => {
-        const idx = prev.findIndex(r => r.id === id);
-        if (idx >= 0) {
-          const copy = [...prev];
-          copy[idx] = { ...copy[idx], budget: amt };
-          return copy;
-        }
-        return [...prev, { id, district: districtHADP, taluka: talukaHADP, budget: amt, active: true }];
-      });
-      setAmount("");
+    setLoading(true);
+    try {
+      await Promise.all([
+        fetchMLABudgets(selectedFetchFinancialYear),
+        fetchMLCBudgets(selectedFetchFinancialYear)
+      ]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleEdit = (row: any) => {
-    console.log("Edit clicked:", row);
-    alert("Hook your edit modal here.");
-  };
-
-  const toggleActive = (plan: Plan, id: string) => {
-    if (plan === "ML-MLA") {
-      setStoreMLA(list => {
-        const found = list.find(r => r.id === id);
-        if (!found) return [...list, { id, fy: id.split("|")[0], district: id.split("|")[1], constituency: id.split("|")[2], mlaName: id.split("|")[3], budget: 0, active: false }];
-        return list.map(r => r.id === id ? { ...r, active: !r.active } : r);
-      });
-    } else if (plan === "ML-MLC") {
-      setStoreMLC(list => {
-        const found = list.find(r => r.id === id);
-        if (!found) return [...list, { id, fy: id.split("|")[0], district: id.split("|")[1], mlcName: id.split("|")[2], budget: 0, active: false }];
-        return list.map(r => r.id === id ? { ...r, active: !r.active } : r);
-      });
-    } else {
-      setStoreHADP(list => {
-        const found = list.find(r => r.id === id);
-        if (!found) return [...list, { id, district: id.split("|")[0], taluka: id.split("|")[1], budget: 0, active: false }];
-        return list.map(r => r.id === id ? { ...r, active: !r.active } : r);
-      });
-    }
-  };
-
-  /* ------------------------------- Tables (derived from mock + limits) ---- */
-  // MLA render rows from mock filtered + joined with limits
-  const tableMLA = useMemo(() => {
-    const base = mlaData
-      .filter(r => !districtML || r.district === districtML)
-      .filter(r => !constituencyML || r.taluka === constituencyML)
-      .filter(r => !mlaName || r.name === mlaName);
-
-    const seen = new Set<string>();
-    const rows = base.map(r => {
-      const id = `${fyML || mlaMlcData.financialYear}|${r.district}|${r.taluka}|${r.name}`;
-      if (seen.has(id)) return null;
-      seen.add(id);
-      const found = mapMLA.get(id);
-      const limit = found?.budget ?? null;
-      const active = found?.active ?? true;
-      return {
-        id,
-        fy: fyML || mlaMlcData.financialYear,
-        constituency: r.taluka,
-        mlaName: r.name,
-        limit,
-        revised: limit !== null ? Math.round(limit * 1.5) : null,
-        active
-      };
-    }).filter(Boolean) as Array<{id: string; fy: string; constituency: string; mlaName: string; limit: number|null; revised: number|null; active: boolean}>;
-
-    return rows.sort((a, b) => a.mlaName.localeCompare(b.mlaName, "en", { sensitivity: "base" }));
-  }, [mlaData, districtML, constituencyML, mlaName, fyML, mapMLA]);
-
-  // MLC render rows
-  const tableMLC = useMemo(() => {
-    const base = mlcData
-      .filter(r => !districtMLC || r.district === districtMLC)
-      .filter(r => !mlcName || r.name === mlcName);
-
-    const seen = new Set<string>();
-    const rows = base.map(r => {
-      const id = `${fyMLC || mlaMlcData.financialYear}|${r.district}|${r.name}`;
-      if (seen.has(id)) return null;
-      seen.add(id);
-      const found = mapMLC.get(id);
-      const limit = found?.budget ?? null;
-      const active = found?.active ?? true;
-      return {
-        id,
-        fy: fyMLC || mlaMlcData.financialYear,
-        district: r.district,
-        mlcName: r.name,
-        limit,
-        revised: limit !== null ? Math.round(limit * 1.5) : null,
-        active
-      };
-    }).filter(Boolean) as Array<{id: string; fy: string; district: string; mlcName: string; limit: number|null; revised: number|null; active: boolean}>;
-
-    return rows.sort((a, b) => a.mlcName.localeCompare(b.mlcName, "en", { sensitivity: "base" }));
-  }, [mlcData, districtMLC, mlcName, fyMLC, mapMLC]);
-
-  // HADP render rows
-  const tableHADP = useMemo(() => {
-    const base = hadpMock
-      .filter(r => !fyHADP || r.financialYear === fyHADP)
-      .filter(r => !districtHADP || r.district === districtHADP)
-      .filter(r => !talukaHADP || r.taluka === talukaHADP);
-
-    const seen = new Set<string>();
-    const rows = base.map(r => {
-      const id = `${r.district}|${r.taluka}`;
-      if (seen.has(id)) return null;
-      seen.add(id);
-      const found = mapHADP.get(id);
-      const limit = found?.budget ?? null;
-      const active = found?.active ?? true;
-      return {
-        id,
-        district: r.district,
-        taluka: r.taluka,
-        limit,
-        active
-      };
-    }).filter(Boolean) as Array<{id: string; district: string; taluka: string; limit: number|null; active: boolean}>;
-
-    return rows.sort((a, b) => a.taluka.localeCompare(b.taluka, "en", { sensitivity: "base" }));
-  }, [hadpMock, fyHADP, districtHADP, talukaHADP, mapHADP]);
-
-  /* --------------------------------- UI ---------------------------------- */
+  if (loading) {
   return (
-    <div className="p-4 space-y-6">
-      {/* Filters Compartment (compact grid, no horizontal scroll) */}
-      <Card className="rounded-md shadow-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Budget Allocation – Filters</CardTitle>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center space-x-2">
+          <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
+          <span className="text-lg font-medium text-gray-600">Loading budget allocation data...</span>
+            </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 space-y-6 bg-gray-50">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+          <h1 className="text-2xl font-bold">Budget Allocation</h1>
+          <p className="text-gray-600">Allocate budgets to MLAs, MLCs, and HADP</p>
+                </div>
+        <Button 
+          variant="outline" 
+          onClick={async () => {
+            setLoading(true);
+            await Promise.all([
+              fetchFinancialYears(),
+              fetchDistricts(),
+              fetchSchemes(),
+              fetchMLCs(),
+              fetchHADPBudgets()
+            ]);
+            if (selectedFetchFinancialYear) {
+              await Promise.all([
+                fetchMLABudgets(selectedFetchFinancialYear),
+                fetchMLCBudgets(selectedFetchFinancialYear)
+              ]);
+            }
+            setLoading(false);
+          }}
+          className="flex items-center px-4 py-2 rounded-sm shadow"
+        >
+          <RefreshCw className="mr-2 h-4 w-4"/> Refresh All
+        </Button>
+                </div>
+
+      {/* Budget Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <motion.div
+          className="border border-gray-200 rounded-sm bg-white p-4 shadow-sm"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0 }}
+        >
+          <div className="flex items-center">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Users className="w-5 h-5 text-blue-600" />
+                        </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Total Allocations</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {filteredMLABudgets.length + filteredMLCBudgets.length + filteredHADPBudgets.length}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+        <motion.div
+          className="border border-gray-200 rounded-sm bg-white p-4 shadow-sm"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <div className="flex items-center">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <UserCheck className="w-5 h-5 text-green-600" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">MLA Allocations</p>
+              <p className="text-2xl font-bold text-green-600">{filteredMLABudgets.length}</p>
+            </div>
+          </div>
+        </motion.div>
+        <motion.div
+          className="border border-gray-200 rounded-sm bg-white p-4 shadow-sm"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <div className="flex items-center">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <UserX className="w-5 h-5 text-purple-600" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">MLC Allocations</p>
+              <p className="text-2xl font-bold text-purple-600">{filteredMLCBudgets.length}</p>
+            </div>
+          </div>
+        </motion.div>
+        <motion.div
+          className="border border-gray-200 rounded-sm bg-white p-4 shadow-sm"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <div className="flex items-center">
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <AlertCircle className="w-5 h-5 text-orange-600" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">HADP Allocations</p>
+              <p className="text-2xl font-bold text-orange-600">{filteredHADPBudgets.length}</p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Plan Type Selection */}
+      <Card className="border border-gray-200 rounded-sm shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-lg">Select Plan Type</CardTitle>
         </CardHeader>
-        <CardContent className="p-3">
-          <div className="grid grid-cols-12 gap-3 items-end">
-            {/* Plan Type */}
-            <div className="col-span-12 sm:col-span-6 md:col-span-3 lg:col-span-2">
-              <Label className="mb-1 block text-xs">Plan Type</Label>
-              <SearchableSelect
-                value={planType}
-                onValueChange={v => setPlanType(v as Plan)}
-                options={["ML-MLA", "ML-MLC", "HADP"]}
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Button
+              variant={selectedPlanType === 'MLA' ? 'default' : 'outline'}
+              onClick={() => setSelectedPlanType('MLA')}
+              className="w-full"
+            >
+              MLA Budget Allocation
+            </Button>
+            <Button
+              variant={selectedPlanType === 'MLC' ? 'default' : 'outline'}
+              onClick={() => setSelectedPlanType('MLC')}
+              className="w-full"
+            >
+              MLC Budget Allocation
+            </Button>
+            <Button
+              variant={selectedPlanType === 'HADP' ? 'default' : 'outline'}
+              onClick={() => setSelectedPlanType('HADP')}
+              className="w-full"
+            >
+              HADP Budget Allocation
+            </Button>
+                </div>
+        </CardContent>
+      </Card>
+
+      
+
+      {/* Add Budget Button */}
+      <Card className="border border-gray-200 rounded-sm shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-lg">Budget Management</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-between items-center">
+            <p className="text-gray-600">Add new budget allocations for the selected plan type</p>
+            <Button 
+              onClick={() => setShowAddBudgetPopup(true)}
+              className="px-6"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Budget
+            </Button>
+                </div>
+        </CardContent>
+      </Card>
+          
+
+      {/* Filters */}
+      <Card className="border border-gray-200 rounded-sm shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-lg">Filter Budget Data</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Financial Year</Label>
+              <Select value={filterFinancialYear} onValueChange={setFilterFinancialYear}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableFinancialYears.map(fy => (
+                    <SelectItem key={fy} value={fy}>
+                      {fy}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+                </div>
+            <div>
+              <Label>District</Label>
+              <Select value={filterDistrict} onValueChange={setFilterDistrict}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableDistricts.map(district => (
+                    <SelectItem key={district} value={district}>
+                      {district}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+                </div>
+                </div>
+        </CardContent>
+      </Card>
+
+
+
+      {/* Budget Data Table */}
+      <Card className="border border-gray-200 rounded-sm shadow-sm overflow-hidden">
+        <CardHeader>
+          <CardTitle className="text-lg">Budget Allocation History</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0 overflow-x-auto">
+          <Table>
+              <TableHeader>
+                <TableRow>
+                <TableHead>Type</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Financial Year</TableHead>
+                <TableHead>District</TableHead>
+                <TableHead>Constituency/Taluka</TableHead>
+                <TableHead>Scheme</TableHead>
+                <TableHead>Allocated Limit</TableHead>
+                <TableHead>Remarks</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+              {filteredMLABudgets.map((budget) => (
+                <TableRow key={`mla-${budget.id}`}>
+                  <TableCell>
+                    <Badge className="bg-green-100 text-green-800">MLA</Badge>
+                      </TableCell>
+                  <TableCell className="font-medium">{budget.mlaName}</TableCell>
+                  <TableCell>{budget.financialYear}</TableCell>
+                  <TableCell>{budget.districtName}</TableCell>
+                  <TableCell>{budget.constituencyName}</TableCell>
+                  <TableCell>{budget.schemeName}</TableCell>
+                  <TableCell>₹{budget.allocatedLimit.toLocaleString()}</TableCell>
+                  <TableCell>{budget.remarks || '-'}</TableCell>
+                  <TableCell>
+                    <Badge className={budget.status === 'ACTIVE' ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                      {budget.status}
+                    </Badge>
+                  </TableCell>
+                                    <TableCell>{new Date(budget.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditBudget(budget, 'MLA')}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                      </TableCell>
+                    </TableRow>
+              ))}
+              {filteredMLCBudgets.map((budget) => (
+                <TableRow key={`mlc-${budget.id}`}>
+                  <TableCell>
+                    <Badge className="bg-purple-100 text-purple-800">MLC</Badge>
+                  </TableCell>
+                  <TableCell className="font-medium">{budget.mlcName}</TableCell>
+                  <TableCell>{budget.financialYear}</TableCell>
+                  <TableCell>{budget.districtName}</TableCell>
+                  <TableCell>-</TableCell>
+                  <TableCell>{budget.schemeName}</TableCell>
+                  <TableCell>₹{budget.allocatedLimit.toLocaleString()}</TableCell>
+                  <TableCell>{budget.remarks || '-'}</TableCell>
+                  <TableCell>
+                    <Badge className={budget.status === 'ACTIVE' ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                      {budget.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{new Date(budget.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditBudget(budget, 'MLC')}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                      </TableCell>
+                    </TableRow>
+              ))}
+              {filteredHADPBudgets.map((budget) => (
+                <TableRow key={`hadp-${budget.id}`}>
+                  <TableCell>
+                    <Badge className="bg-orange-100 text-orange-800">HADP</Badge>
+                  </TableCell>
+                  <TableCell className="font-medium">{budget.talukaName}</TableCell>
+                  <TableCell>{budget.financialYear}</TableCell>
+                  <TableCell>{budget.districtName}</TableCell>
+                  <TableCell>{budget.talukaName}</TableCell>
+                  <TableCell>{budget.schemeName}</TableCell>
+                  <TableCell>₹{budget.allocatedLimit.toLocaleString()}</TableCell>
+                  <TableCell>{budget.remarks || '-'}</TableCell>
+                  <TableCell>
+                    <Badge className={budget.status === 'ACTIVE' ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                      {budget.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{new Date(budget.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditBudget(budget, 'HADP')}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+                            {filteredMLABudgets.length === 0 && filteredMLCBudgets.length === 0 && filteredHADPBudgets.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={11} className="text-center py-8">
+                    <div className="flex flex-col items-center space-y-2">
+                      <Users className="w-8 h-8 text-gray-400" />
+                      <p className="text-gray-500">No budget allocations found</p>
+                      <p className="text-sm text-gray-400">Try adjusting your filters</p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                )}
+              </TableBody>
+            </Table>
+        </CardContent>
+      </Card>
+
+      {/* MLA Budget Edit Popup */}
+      <Dialog open={showMLAPopup} onOpenChange={setShowMLAPopup}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit MLA Budget</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>MLA Name</Label>
+              <Input value={selectedBudgetForEdit?.mlaName || ''} disabled />
+            </div>
+            <div>
+              <Label>Financial Year</Label>
+              <Input value={selectedBudgetForEdit?.financialYear || ''} disabled />
+            </div>
+            <div>
+              <Label>District</Label>
+              <Input value={selectedBudgetForEdit?.districtName || ''} disabled />
+            </div>
+            <div>
+              <Label>Constituency</Label>
+              <Input value={selectedBudgetForEdit?.constituencyName || ''} disabled />
+            </div>
+            <div>
+              <Label htmlFor="allocatedLimit">Allocated Limit (₹) *</Label>
+              <Input
+                id="allocatedLimit"
+                type="number"
+                value={form.allocatedLimit}
+                onChange={(e) => setForm(prev => ({ ...prev, allocatedLimit: e.target.value }))}
+                placeholder="Enter new allocated limit"
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setShowMLAPopup(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => handleUpdateBudget('MLA')}
+                disabled={submitting}
+              >
+                {submitting ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Update Budget
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* MLC Budget Edit Popup */}
+      <Dialog open={showMLCPopup} onOpenChange={setShowMLCPopup}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit MLC Budget</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>MLC Name</Label>
+              <Input value={selectedBudgetForEdit?.mlcName || ''} disabled />
+            </div>
+            <div>
+              <Label>Financial Year</Label>
+              <Input value={selectedBudgetForEdit?.financialYear || ''} disabled />
+            </div>
+            <div>
+              <Label>District</Label>
+              <Input value={selectedBudgetForEdit?.districtName || ''} disabled />
+            </div>
+            <div>
+              <Label htmlFor="allocatedLimit">Allocated Limit (₹) *</Label>
+              <Input
+                id="allocatedLimit"
+                type="number"
+                value={form.allocatedLimit}
+                onChange={(e) => setForm(prev => ({ ...prev, allocatedLimit: e.target.value }))}
+                placeholder="Enter new allocated limit"
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setShowMLCPopup(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => handleUpdateBudget('MLC')}
+                disabled={submitting}
+              >
+                {submitting ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Update Budget
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* HADP Budget Edit Popup */}
+      <Dialog open={showHADPPopup} onOpenChange={setShowHADPPopup}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit HADP Budget</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Taluka Name</Label>
+              <Input value={selectedBudgetForEdit?.talukaName || ''} disabled />
+            </div>
+            <div>
+              <Label>Financial Year</Label>
+              <Input value={selectedBudgetForEdit?.financialYear || ''} disabled />
+            </div>
+            <div>
+              <Label>District</Label>
+              <Input value={selectedBudgetForEdit?.districtName || ''} disabled />
+            </div>
+            <div>
+              <Label htmlFor="allocatedLimit">Allocated Limit (₹) *</Label>
+              <Input
+                id="allocatedLimit"
+                type="number"
+                value={form.allocatedLimit}
+                onChange={(e) => setForm(prev => ({ ...prev, allocatedLimit: e.target.value }))}
+                placeholder="Enter new allocated limit"
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setShowHADPPopup(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => handleUpdateBudget('HADP')}
+                disabled={submitting}
+              >
+                {submitting ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Update Budget
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Budget Popup */}
+      <Dialog open={showAddBudgetPopup} onOpenChange={setShowAddBudgetPopup}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add Budget Allocation - {selectedPlanType}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Financial Year */}
+              <div>
+                <Label htmlFor="financialYear">Financial Year *</Label>
+                <Select
+                  value={form.financialYearId?.toString() || ''}
+                  onValueChange={(value) => setForm(prev => ({ ...prev, financialYearId: parseInt(value) }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select financial year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {financialYears && financialYears.length > 0 ? financialYears.map(fy => (
+                      fy && fy.id ? (
+                        <SelectItem key={fy.id} value={fy.id.toString()}>
+                          {fy.name}
+                        </SelectItem>
+                      ) : null
+                    )).filter(Boolean) : (
+                      <SelectItem value="no-data" disabled>No financial years available</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* District */}
+              <div>
+                <Label htmlFor="district">District *</Label>
+                <Select
+                  value={form.districtId?.toString() || ''}
+                  onValueChange={handleDistrictChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select district" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {districts && districts.length > 0 ? districts.map(district => (
+                      district && district.id ? (
+                        <SelectItem key={district.id} value={district.id.toString()}>
+                          {district.name}
+                        </SelectItem>
+                      ) : null
+                    )).filter(Boolean) : (
+                      <SelectItem value="no-data" disabled>No districts available</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* MLA Selection Mode (only for MLA) */}
+              {selectedPlanType === 'MLA' && (
+                <div>
+                  <Label htmlFor="mlaSelectionMode">MLA Selection Mode *</Label>
+                  <Select
+                    value={form.mlaSelectionMode}
+                    onValueChange={(value: 'direct' | 'constituency') => setForm(prev => ({ 
+                      ...prev, 
+                      mlaSelectionMode: value,
+                      constituencyId: value === 'direct' ? null : prev.constituencyId,
+                      selectedMLAs: []
+                    }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select MLA selection mode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="direct">Direct MLA Selection</SelectItem>
+                      <SelectItem value="constituency">Select by Constituency</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Constituency (only for MLA with constituency mode) */}
+              {selectedPlanType === 'MLA' && form.mlaSelectionMode === 'constituency' && (
+                <div>
+                  <Label htmlFor="constituency">Constituency *</Label>
+                  <Select
+                    value={form.constituencyId?.toString() || ''}
+                    onValueChange={(value) => setForm(prev => ({ 
+                      ...prev, 
+                      constituencyId: parseInt(value),
+                      selectedMLAs: []
+                    }))}
+                    disabled={!form.districtId || loadingConstituencies}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={loadingConstituencies ? "Loading..." : "Select constituency"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {constituencies && constituencies.length > 0 ? constituencies.map(constituency => (
+                        constituency && constituency.id ? (
+                          <SelectItem key={constituency.id} value={constituency.id.toString()}>
+                            {constituency.name}
+                          </SelectItem>
+                        ) : null
+                      )).filter(Boolean) : (
+                        <SelectItem value="no-data" disabled>No constituencies available</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Taluka (only for HADP) */}
+              {selectedPlanType === 'HADP' && (
+                <div>
+                  <Label htmlFor="taluka">Taluka *</Label>
+                  <Select
+                    value={form.talukaId?.toString() || ''}
+                    onValueChange={(value) => setForm(prev => ({ ...prev, talukaId: parseInt(value) }))}
+                    disabled={!form.districtId || loadingTalukas}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={loadingTalukas ? "Loading..." : "Select taluka"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {talukas && talukas.length > 0 ? talukas.map(taluka => (
+                        taluka && taluka.id ? (
+                          <SelectItem key={taluka.id} value={taluka.id.toString()}>
+                            {taluka.name}
+                          </SelectItem>
+                        ) : null
+                      )).filter(Boolean) : (
+                        <SelectItem value="no-data" disabled>No talukas available</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Scheme */}
+              <div>
+                <Label htmlFor="scheme">Scheme *</Label>
+                <Select
+                  value={form.schemeId?.toString() || ''}
+                  onValueChange={(value) => setForm(prev => ({ ...prev, schemeId: parseInt(value) }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select scheme" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {schemes && schemes.length > 0 ? schemes.map((scheme, index) => {
+                      if (typeof scheme === 'string') {
+                        return (
+                          <SelectItem key={index} value={index.toString()}>
+                            {scheme}
+                          </SelectItem>
+                        );
+                      } else if (scheme && (scheme.id || scheme.name || scheme.schemeName)) {
+                        return (
+                          <SelectItem key={scheme.id || index} value={scheme.id?.toString() || index.toString()}>
+                            {scheme.schemeName || scheme.name}
+                          </SelectItem>
+                        );
+                      }
+                      return null;
+                    }).filter(Boolean) : (
+                      <SelectItem value="no-data" disabled>No schemes available</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Allocated Limit */}
+              <div>
+                <Label htmlFor="allocatedLimit">Allocated Limit (₹) *</Label>
+                <Input
+                  id="allocatedLimit"
+                  type="number"
+                  value={form.allocatedLimit}
+                  onChange={(e) => setForm(prev => ({ ...prev, allocatedLimit: e.target.value }))}
+                  placeholder="Enter allocated limit"
+                />
+              </div>
+            </div>
+
+            {/* MLA/MLC Selection (not for HADP) */}
+            {selectedPlanType !== 'HADP' && (
+              <div>
+                <Label className="text-base font-medium">
+                  Select {selectedPlanType === 'MLA' ? 'MLAs' : 'MLCs'} *
+                </Label>
+                <div className="mt-2 max-h-60 overflow-y-auto border border-gray-200 rounded-md p-4">
+                  {selectedPlanType === 'MLA' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {mlas
+                        .filter(mla => {
+                          if (form.mlaSelectionMode === 'constituency' && form.constituencyId) {
+                            // Filter MLAs by selected constituency
+                            return mla.constituencyId === form.constituencyId;
+                          }
+                          return true; // Show all MLAs for direct selection
+                        })
+                        .map(mla => (
+                        <div key={mla.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`mla-${mla.id}`}
+                            checked={form.selectedMLAs.includes(mla.id)}
+                            onCheckedChange={(checked) => handleMLASelection(mla.id, checked as boolean)}
+                          />
+                          <Label htmlFor={`mla-${mla.id}`} className="text-sm cursor-pointer">
+                            <div className="font-medium">{mla.mlaName}</div>
+                            <div className="text-xs text-gray-500">
+                              {mla.constituencyName} • {mla.party}
+                            </div>
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {filteredMLCs.map(mlc => (
+                        <div key={mlc.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`mlc-${mlc.id}`}
+                            checked={form.selectedMLCs.includes(mlc.id)}
+                            onCheckedChange={(checked) => handleMLCSelection(mlc.id, checked as boolean)}
+                          />
+                          <Label htmlFor={`mlc-${mlc.id}`} className="text-sm cursor-pointer">
+                            <div className="font-medium">{mlc.mlcName}</div>
+                            <div className="text-xs text-gray-500">
+                              {mlc.category} • {mlc.region}
+                            </div>
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                        </div>
+              </div>
+            )}
+
+            {/* Remarks */}
+            <div>
+              <Label htmlFor="remarks">Remarks</Label>
+              <Input
+                id="remarks"
+                value={form.remarks}
+                onChange={(e) => setForm(prev => ({ ...prev, remarks: e.target.value }))}
+                placeholder="Enter remarks (optional)"
               />
             </div>
 
-            {/* ML-MLA filters */}
-            {planType === "ML-MLA" && (
-              <>
-                <div className="col-span-6 sm:col-span-3 md:col-span-2 lg:col-span-2">
-                  <Label className="mb-1 block text-xs">Financial Year</Label>
-                  <SearchableSelect value={fyML} onValueChange={setFyML} options={fyOptionsML} />
-                </div>
-                <div className="col-span-6 sm:col-span-3 md:col-span-2 lg:col-span-2">
-                  <Label className="mb-1 block text-xs">District</Label>
-                  <SearchableSelect value={districtML} onValueChange={setDistrictML} options={districtOptionsML} />
-                </div>
-                <div className="col-span-6 sm:col-span-3 md:col-span-2 lg:col-span-2">
-                  <Label className="mb-1 block text-xs">Constituency</Label>
-                  <SearchableSelect value={constituencyML} onValueChange={setConstituencyML} options={constituencyOptionsML} />
-                </div>
-                <div className="col-span-6 sm:col-span-3 md:col-span-2 lg:col-span-2">
-                  <Label className="mb-1 block text-xs">MLA Name</Label>
-                  <SearchableSelect value={mlaName} onValueChange={setMlaName} options={mlaNameOptions} />
-                </div>
-              </>
-            )}
-
-            {/* ML-MLC filters */}
-            {planType === "ML-MLC" && (
-              <>
-                <div className="col-span-6 sm:col-span-3 md:col-span-2 lg:col-span-2">
-                  <Label className="mb-1 block text-xs">Financial Year</Label>
-                  <SearchableSelect value={fyMLC} onValueChange={setFyMLC} options={fyOptionsMLC} />
-                </div>
-                <div className="col-span-6 sm:col-span-3 md:col-span-2 lg:col-span-2">
-                  <Label className="mb-1 block text-xs">District</Label>
-                  <SearchableSelect value={districtMLC} onValueChange={setDistrictMLC} options={districtOptionsMLC} />
-                </div>
-                <div className="col-span-6 sm:col-span-3 md:col-span-2 lg:col-span-2">
-                  <Label className="mb-1 block text-xs">MLC Name</Label>
-                  <SearchableSelect value={mlcName} onValueChange={setMlcName} options={mlcNameOptions} />
-                </div>
-              </>
-            )}
-
-            {/* HADP filters */}
-            {planType === "HADP" && (
-              <>
-                <div className="col-span-6 sm:col-span-3 md:col-span-2 lg:col-span-2">
-                  <Label className="mb-1 block text-xs">Financial Year</Label>
-                  <SearchableSelect value={fyHADP} onValueChange={setFyHADP} options={fyOptionsHADP} />
-                </div>
-                <div className="col-span-6 sm:col-span-3 md:col-span-2 lg:col-span-2">
-                  <Label className="mb-1 block text-xs">District</Label>
-                  <SearchableSelect value={districtHADP} onValueChange={setDistrictHADP} options={districtOptionsHADP} />
-                </div>
-                <div className="col-span-6 sm:col-span-3 md:col-span-2 lg:col-span-2">
-                  <Label className="mb-1 block text-xs">Taluka</Label>
-                  <SearchableSelect value={talukaHADP} onValueChange={setTalukaHADP} options={talukaOptionsHADP} />
-                </div>
-              </>
-            )}
-
-            {/* Amount + Allocate (common) */}
-            <div className="col-span-6 sm:col-span-4 md:col-span-3 lg:col-span-2">
-              <Label className="mb-1 block text-xs" htmlFor="alloc">Amount (₹)</Label>
-              <Input id="alloc" type="number" className="h-9 text-xs" placeholder="e.g. 150000" value={amount} onChange={e => setAmount(e.target.value)} />
-            </div>
-            <div className="col-span-6 sm:col-span-2 md:col-span-1 lg:col-span-1 flex">
-              <Button className="h-9 w-full md:w-auto" onClick={allocate}>Allocate</Button>
+            {/* Submit Button */}
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setShowAddBudgetPopup(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="px-6"
+              >
+                {submitting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Allocating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Allocate Budget
+                  </>
+                )}
+              </Button>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Tables */}
-      <Card className="rounded-md shadow-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Budget Allocations(*All Amounts in Thousands)</CardTitle>
-        </CardHeader>
-        <CardContent className="overflow-x-auto p-0">
-          {/* MLA Table */}
-          {planType === "ML-MLA" && (
-            <Table className="min-w-full">
-              <TableHeader>
-                <TableRow>
-                  {["Sr No", "FY", "Constituency", "MLA Name", "Budget Limit Amount", "Actions"]
-                    .map(h => (
-                      <TableHead key={h} className="border px-2 py-1 text-xs font-medium">{h}</TableHead>
-                    ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tableMLA.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-4 text-sm">No records found for selected filters.</TableCell></TableRow>
-                ) : (
-                  tableMLA.map((row, i) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="border px-2 py-1 text-xs">{i + 1}</TableCell>
-                      <TableCell className="border px-2 py-1 text-xs">{row.fy}</TableCell>
-                      <TableCell className="border px-2 py-1 text-xs">{row.constituency}</TableCell>
-                      <TableCell className="border px-2 py-1 text-xs">{row.mlaName}</TableCell>
-                      <TableCell className="border px-2 py-1 text-xs">{toCurrency(row.limit)}</TableCell>
-                      <TableCell className="border px-2 py-1 text-xs">
-                        <div className="flex items-center gap-2">
-                          <Button size="sm" variant="outline" onClick={() => handleEdit(row)}>Edit</Button>
-                          <motion.button
-                            whileTap={{ scale: 0.97 }}
-                            onClick={() => toggleActive("ML-MLA", row.id)}
-                            className={cn(
-                              "px-3 py-1 rounded-full text-xs border",
-                              row.active ? "bg-green-50 border-green-400 text-green-700" : "bg-gray-50 border-gray-300 text-gray-600"
-                            )}
-                          >
-                            {row.active ? "Active" : "Inactive"}
-                          </motion.button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          )}
-
-          {/* MLC Table (no Constituency) */}
-          {planType === "ML-MLC" && (
-            <Table className="min-w-full">
-              <TableHeader>
-                <TableRow>
-                  {["Sr No", "FY", "District", "MLC Name", "Budget Limit Amount", "Revised Budget (x1.5)", "Actions"]
-                    .map(h => (
-                      <TableHead key={h} className="border px-2 py-1 text-xs font-medium">{h}</TableHead>
-                    ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tableMLC.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-4 text-sm">No records found for selected filters.</TableCell></TableRow>
-                ) : (
-                  tableMLC.map((row, i) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="border px-2 py-1 text-xs">{i + 1}</TableCell>
-                      <TableCell className="border px-2 py-1 text-xs">{row.fy}</TableCell>
-                      <TableCell className="border px-2 py-1 text-xs">{row.district}</TableCell>
-                      <TableCell className="border px-2 py-1 text-xs">{row.mlcName}</TableCell>
-                      <TableCell className="border px-2 py-1 text-xs">{toCurrency(row.limit)}</TableCell>
-                      <TableCell className="border px-2 py-1 text-xs">{toCurrency(row.revised ?? undefined)}</TableCell>
-                      <TableCell className="border px-2 py-1 text-xs">
-                        <div className="flex items-center gap-2">
-                          <Button size="sm" variant="outline" onClick={() => handleEdit(row)}>Edit</Button>
-                          <motion.button
-                            whileTap={{ scale: 0.97 }}
-                            onClick={() => toggleActive("ML-MLC", row.id)}
-                            className={cn(
-                              "px-3 py-1 rounded-full text-xs border",
-                              row.active ? "bg-green-50 border-green-400 text-green-700" : "bg-gray-50 border-gray-300 text-gray-600"
-                            )}
-                          >
-                            {row.active ? "Active" : "Inactive"}
-                          </motion.button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          )}
-
-          {/* HADP Table */}
-          {planType === "HADP" && (
-            <Table className="min-w-full">
-              <TableHeader>
-                <TableRow>
-                  {["Sr No", "District Name", "Taluka Name", "Budget Amount Limit", "Actions"]
-                    .map(h => (
-                      <TableHead key={h} className="border px-2 py-1 text-xs font-medium">{h}</TableHead>
-                    ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tableHADP.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-4 text-sm">No records found for selected filters.</TableCell></TableRow>
-                ) : (
-                  tableHADP.map((row, i) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="border px-2 py-1 text-xs">{i + 1}</TableCell>
-                      <TableCell className="border px-2 py-1 text-xs">{row.id.split("|")[0]}</TableCell>
-                      <TableCell className="border px-2 py-1 text-xs">{row.taluka}</TableCell>
-                      <TableCell className="border px-2 py-1 text-xs">{toCurrency(row.limit)}</TableCell>
-                      <TableCell className="border px-2 py-1 text-xs">
-                        <div className="flex items-center gap-2">
-                          <Button size="sm" variant="outline" onClick={() => handleEdit(row)}>Edit</Button>
-                          <motion.button
-                            whileTap={{ scale: 0.97 }}
-                            onClick={() => toggleActive("HADP", row.id)}
-                            className={cn(
-                              "px-3 py-1 rounded-full text-xs border",
-                              row.active ? "bg-green-50 border-green-400 text-green-700" : "bg-gray-50 border-gray-300 text-gray-600"
-                            )}
-                          >
-                            {row.active ? "Active" : "Inactive"}
-                          </motion.button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

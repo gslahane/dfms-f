@@ -29,10 +29,10 @@ const SIDEBAR_CONFIG = {
     { path: '/district-dashboard',   icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/view-demands',         icon: CheckCircle,     label: 'View IA Demands' },
     { path: '/mla-mlc-recommendation', icon: IndianRupee,   label: 'MLA Recommendations' },
-    { path: '/fund-allocation',      icon: IndianRupee,     label: 'Budget Sanctioned' },
+    // { path: '/fund-allocation',      icon: IndianRupee,     label: 'Budget Sanctioned' },
     { path: '/ia-master',            icon: Users,           label: 'IA Master' },
-    { path: '/work-master',          icon: FileText,        label: 'Scheme-Work Master' },
-    { path: '/reappropriation',      icon: ArrowLeftRight,  label: 'Re-appropriation' },
+    // { path: '/work-master',          icon: FileText,        label: 'Scheme-Work Master' },
+    // { path: '/reappropriation',      icon: ArrowLeftRight,  label: 'Re-appropriation' },
     { path: '/reports',              icon: BarChart3,       label: 'Reports' }
   ],
 

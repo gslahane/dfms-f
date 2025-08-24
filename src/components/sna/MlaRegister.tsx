@@ -58,8 +58,11 @@ import {
   RefreshCw,
   Pencil,
   Crown,
-  GraduationCap
+  GraduationCap,
+  Eye,
+  AlertCircle
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 // Types
 interface District {
@@ -81,20 +84,20 @@ interface FinancialYear {
 interface MLAUser {
   id: number;
   type: 'MLA';
-  fullname: string;
-  username: string;
-  email: string;
-  password: string;
-  mobile: number;
-  districtId: number;
-  districtName: string;
   mlaName: string;
-  mlaParty: string;
-  mlaContactNumber: string;
-  mlaEmail: string;
-  mlaTerm: number;
+  party: string;
+  contactNumber: string;
+  email: string;
+  term: number;
+  status: string;
   constituencyId: number;
   constituencyName: string;
+  districtId: number;
+  districtName: string;
+  schemeIds: number[];
+  schemeNames?: string[];
+  userId: number;
+  username: string;
   isActive: boolean;
   createdAt: string;
 }
@@ -102,19 +105,18 @@ interface MLAUser {
 interface MLCUser {
   id: number;
   type: 'MLC';
-  fullname: string;
-  username: string;
+  mlcName: string;
+  category: string;
+  contactNumber: string;
   email: string;
-  password: string;
-  mobile: number;
+  term: number;
+  status: string;
   districtId: number;
   districtName: string;
-  mlcName: string;
-  mlcCategory: string;
-  mlcContactNumber: string;
-  mlcEmail: string;
-  mlcTerm: number;
-  mlcRegion: string;
+  schemeIds?: number[];
+  schemeNames?: string[];
+  userId: number;
+  username: string;
   isActive: boolean;
   createdAt: string;
 }
@@ -131,8 +133,6 @@ interface MLAForm {
   districtId: number | null;
   mlaName: string;
   mlaParty: string;
-  mlaContactNumber: string;
-  mlaEmail: string;
   mlaTerm: number | null;
   constituencyId: number | null;
 }
@@ -146,11 +146,9 @@ interface MLCForm {
   mobile: string;
   districtId: number | null;
   mlcName: string;
-  mlcCategory: string;
   mlcContactNumber: string;
   mlcEmail: string;
   mlcTerm: number | null;
-  mlcRegion: string;
 }
 
 interface DeactivationForm {
@@ -159,6 +157,7 @@ interface DeactivationForm {
 }
 
 export default function MlaRegister() {
+  const { toast } = useToast();
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [constituencies, setConstituencies] = useState<Constituency[]>([]);
@@ -166,6 +165,7 @@ export default function MlaRegister() {
   
   // Form states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deactivationDialogOpen, setDeactivationDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
   const [selectedType, setSelectedType] = useState<'MLA' | 'MLC'>('MLA');
@@ -180,8 +180,6 @@ export default function MlaRegister() {
     districtId: null,
     mlaName: '',
     mlaParty: '',
-    mlaContactNumber: '',
-    mlaEmail: '',
     mlaTerm: null,
     constituencyId: null
   });
@@ -195,11 +193,9 @@ export default function MlaRegister() {
     mobile: '',
     districtId: null,
     mlcName: '',
-    mlcCategory: '',
     mlcContactNumber: '',
     mlcEmail: '',
-    mlcTerm: null,
-    mlcRegion: ''
+    mlcTerm: null
   });
   
   const [deactivationForm, setDeactivationForm] = useState<DeactivationForm>({
@@ -273,49 +269,97 @@ export default function MlaRegister() {
     }
   };
 
-  // Fetch MLA users
+  // Fetch MLA users using admin API
   const fetchMLAUsers = async () => {
     try {
       const baseURL = import.meta.env.VITE_API_BASE_URL;
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${baseURL}/api/user/mlas`, {
+      const response = await axios.get(`${baseURL}/api/admin/mlas`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      if (response.data.success) {
-        const mlaUsers = response.data.data || [];
-        setUsers(prev => {
-          const filtered = prev.filter(u => u.type !== 'MLA');
-          return [...filtered, ...mlaUsers];
-        });
-      }
+      
+      // Transform the response to match our interface
+      const mlaUsers = (response.data || []).map((mla: any) => ({
+        id: mla.id,
+        type: 'MLA' as const,
+        mlaName: mla.mlaName,
+        party: mla.party,
+        contactNumber: mla.contactNumber,
+        email: mla.email,
+        term: mla.term,
+        status: mla.status,
+        constituencyId: mla.constituencyId,
+        constituencyName: mla.constituencyName,
+        districtId: mla.districtId,
+        districtName: mla.districtName,
+        schemeIds: mla.schemeIds || [],
+        schemeNames: mla.schemeNames || [],
+        userId: mla.userId,
+        username: mla.username,
+        isActive: mla.status === 'ACTIVE', // Determine from status
+        createdAt: mla.createdAt || new Date().toISOString()
+      }));
+      
+      setUsers(prev => {
+        const filtered = prev.filter(u => u.type !== 'MLA');
+        return [...filtered, ...mlaUsers];
+      });
     } catch (err: any) {
       console.error('Error fetching MLA users:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch MLA users",
+        variant: "destructive"
+      });
     }
   };
 
-  // Fetch MLC users
+  // Fetch MLC users using admin API
   const fetchMLCUsers = async () => {
     try {
       const baseURL = import.meta.env.VITE_API_BASE_URL;
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${baseURL}/api/user/mlc`, {
+      const response = await axios.get(`${baseURL}/api/admin/mlc`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      if (response.data.success) {
-        const mlcUsers = response.data.data || [];
-        setUsers(prev => {
-          const filtered = prev.filter(u => u.type !== 'MLC');
-          return [...filtered, ...mlcUsers];
-        });
-      }
+      
+      // Transform the response to match our interface
+      const mlcUsers = (response.data || []).map((mlc: any) => ({
+        id: mlc.id,
+        type: 'MLC' as const,
+        mlcName: mlc.mlcName,
+        category: mlc.category,
+        contactNumber: mlc.contactNumber,
+        email: mlc.email,
+        term: mlc.term,
+        status: mlc.status,
+        districtId: mlc.districtId,
+        districtName: mlc.districtName,
+        schemeIds: mlc.schemeIds || [],
+        schemeNames: mlc.schemeNames || [],
+        userId: mlc.userId,
+        username: mlc.username,
+        isActive: mlc.status === 'ACTIVE', // Determine from status
+        createdAt: mlc.createdAt || new Date().toISOString()
+      }));
+      
+      setUsers(prev => {
+        const filtered = prev.filter(u => u.type !== 'MLC');
+        return [...filtered, ...mlcUsers];
+      });
     } catch (err: any) {
       console.error('Error fetching MLC users:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch MLC users",
+        variant: "destructive"
+      });
     }
   };
 
@@ -339,12 +383,10 @@ export default function MlaRegister() {
           districtId: mlaForm.districtId,
           mlaName: mlaForm.mlaName,
           mlaParty: mlaForm.mlaParty,
-          mlaContactNumber: mlaForm.mlaContactNumber,
-          mlaEmail: mlaForm.mlaEmail,
           mlaTerm: mlaForm.mlaTerm,
           constituencyId: mlaForm.constituencyId
         };
-        endpoint = '/api/user/mlas';
+        endpoint = '/api/user/mla';
       } else {
         payload = {
           fullname: mlcForm.fullname,
@@ -354,11 +396,9 @@ export default function MlaRegister() {
           mobile: parseInt(mlcForm.mobile) || 0,
           districtId: mlcForm.districtId,
           mlcName: mlcForm.mlcName,
-          mlcCategory: mlcForm.mlcCategory,
           mlcContactNumber: mlcForm.mlcContactNumber,
           mlcEmail: mlcForm.mlcEmail,
-          mlcTerm: mlcForm.mlcTerm,
-          mlcRegion: mlcForm.mlcRegion
+          mlcTerm: mlcForm.mlcTerm
         };
         endpoint = '/api/user/mlc';
       }
@@ -373,11 +413,22 @@ export default function MlaRegister() {
       if (response.data.success) {
         setCreateDialogOpen(false);
         resetForms();
-        fetchMLAUsers();
-        fetchMLCUsers();
+        // Refresh the data after successful creation
+        await Promise.all([fetchMLAUsers(), fetchMLCUsers()]);
+        toast({
+          title: "Success",
+          description: `${selectedType} user created successfully`,
+          variant: "default"
+        });
       }
     } catch (err: any) {
       console.error('Error creating user:', err);
+      const errorMessage = err.response?.data?.message || `Failed to create ${selectedType} user`;
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
     } finally {
       setSubmitting(false);
     }
@@ -391,27 +442,36 @@ export default function MlaRegister() {
       
       const endpoint = type === 'MLA' 
         ? `/api/admin/mlas/${userId}/status`
-        : `/api/admin/mlc/${userId}/activate`;
+        : `/api/admin/mlc/${userId}/status`;
       
-      const method = type === 'MLA' ? 'PATCH' : 'POST';
-      const payload = type === 'MLA' ? { isActive: true } : {};
+      const payload = {
+        status: 'ACTIVE',
+        alsoToggleUser: true
+      };
       
-      const response = await axios({
-        method,
-        url: `${baseURL}${endpoint}`,
-        data: payload,
+      const response = await axios.patch(`${baseURL}${endpoint}`, payload, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
-      if (response.data.success) {
-        fetchMLAUsers();
-        fetchMLCUsers();
-      }
+      // Refresh the data after successful activation
+      await Promise.all([fetchMLAUsers(), fetchMLCUsers()]);
+      
+      toast({
+        title: "Success",
+        description: `${type} user activated successfully`,
+        variant: "default"
+      });
     } catch (err: any) {
       console.error('Error activating user:', err);
+      const errorMessage = err.response?.data?.message || `Failed to activate ${type} user`;
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
     }
   };
 
@@ -424,45 +484,120 @@ export default function MlaRegister() {
       const baseURL = import.meta.env.VITE_API_BASE_URL;
       const token = localStorage.getItem("token");
       
-      const formData = new FormData();
-      formData.append('remark', deactivationForm.remark);
-      if (deactivationForm.deactivationLetter) {
-        formData.append('deactivationLetter', deactivationForm.deactivationLetter);
-      }
-      
       const endpoint = selectedUser.type === 'MLA' 
         ? `/api/admin/mlas/${selectedUser.id}/status`
-        : `/api/admin/mlc/${selectedUser.id}/deactivate`;
+        : `/api/admin/mlc/${selectedUser.id}/status`;
       
-      const method = selectedUser.type === 'MLA' ? 'PATCH' : 'POST';
-      const payload = selectedUser.type === 'MLA' 
-        ? { isActive: false, remark: deactivationForm.remark }
-        : formData;
+      const payload = {
+        status: 'INACTIVE',
+        alsoToggleUser: true
+      };
       
-      const headers = selectedUser.type === 'MLA' 
-        ? {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        : {
-            'Authorization': `Bearer ${token}`
-          };
-      
-      const response = await axios({
-        method,
-        url: `${baseURL}${endpoint}`,
-        data: payload,
-        headers
+      const response = await axios.patch(`${baseURL}${endpoint}`, payload, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
 
-      if (response.data.success) {
-        setDeactivationDialogOpen(false);
-        resetDeactivationForm();
-        fetchMLAUsers();
-        fetchMLCUsers();
-      }
+      setDeactivationDialogOpen(false);
+      resetDeactivationForm();
+      // Refresh the data after successful deactivation
+      await Promise.all([fetchMLAUsers(), fetchMLCUsers()]);
+      
+      toast({
+        title: "Success",
+        description: `${selectedUser.type} user deactivated successfully`,
+        variant: "default"
+      });
     } catch (err: any) {
       console.error('Error deactivating user:', err);
+      const errorMessage = err.response?.data?.message || `Failed to deactivate ${selectedUser.type} user`;
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Edit user
+  const handleEditUser = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      setSubmitting(true);
+      const baseURL = import.meta.env.VITE_API_BASE_URL;
+      const token = localStorage.getItem("token");
+      
+      let payload: any;
+      let endpoint: string;
+
+      if (selectedUser.type === 'MLA') {
+        payload = {
+          id: selectedUser.id,
+          mlaName: mlaForm.mlaName,
+          party: mlaForm.mlaParty,
+          contactNumber: mlaForm.mobile,
+          email: mlaForm.email,
+          term: mlaForm.mlaTerm,
+          status: selectedUser.status,
+          constituencyId: mlaForm.constituencyId,
+          constituencyName: selectedUser.constituencyName,
+          districtId: mlaForm.districtId,
+          districtName: selectedUser.districtName,
+          schemeIds: selectedUser.schemeIds || [],
+          schemeNames: selectedUser.schemeNames || [],
+          userId: selectedUser.userId,
+          username: mlaForm.username
+        };
+        endpoint = `/api/admin/mlas/${selectedUser.id}`;
+      } else {
+        payload = {
+          id: selectedUser.id,
+          mlcName: mlcForm.mlcName,
+          category: selectedUser.category,
+          contactNumber: mlcForm.mlcContactNumber,
+          email: mlcForm.mlcEmail,
+          term: mlcForm.mlcTerm,
+          status: selectedUser.status,
+          districtId: mlcForm.districtId,
+          districtName: selectedUser.districtName,
+          schemeIds: selectedUser.schemeIds || [],
+          schemeNames: selectedUser.schemeNames || [],
+          userId: selectedUser.userId,
+          username: mlcForm.username
+        };
+        endpoint = `/api/admin/mlc/${selectedUser.id}`;
+      }
+      
+      const response = await axios.put(`${baseURL}${endpoint}`, payload, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      setEditDialogOpen(false);
+      resetForms();
+      // Refresh the data after successful update
+      await Promise.all([fetchMLAUsers(), fetchMLCUsers()]);
+      
+      toast({
+        title: "Success",
+        description: `${selectedUser.type} user updated successfully`,
+        variant: "default"
+      });
+    } catch (err: any) {
+      console.error('Error updating user:', err);
+      const errorMessage = err.response?.data?.message || `Failed to update ${selectedUser.type} user`;
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
     } finally {
       setSubmitting(false);
     }
@@ -479,8 +614,6 @@ export default function MlaRegister() {
       districtId: null,
       mlaName: '',
       mlaParty: '',
-      mlaContactNumber: '',
-      mlaEmail: '',
       mlaTerm: null,
       constituencyId: null
     });
@@ -492,11 +625,9 @@ export default function MlaRegister() {
       mobile: '',
       districtId: null,
       mlcName: '',
-      mlcCategory: '',
       mlcContactNumber: '',
       mlcEmail: '',
-      mlcTerm: null,
-      mlcRegion: ''
+      mlcTerm: null
     });
   };
 
@@ -550,6 +681,42 @@ export default function MlaRegister() {
     };
     initializeData();
   }, []);
+
+  // Get individual MLA details
+  const getMLADetails = async (mlaId: number) => {
+    try {
+      const baseURL = import.meta.env.VITE_API_BASE_URL;
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${baseURL}/api/admin/mlas/${mlaId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response.data;
+    } catch (err: any) {
+      console.error('Error fetching MLA details:', err);
+      return null;
+    }
+  };
+
+  // Get individual MLC details
+  const getMLCDetails = async (mlcId: number) => {
+    try {
+      const baseURL = import.meta.env.VITE_API_BASE_URL;
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${baseURL}/api/admin/mlc/${mlcId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response.data;
+    } catch (err: any) {
+      console.error('Error fetching MLC details:', err);
+      return null;
+    }
+  };
 
   // Helper functions
   const getStatusBadge = (isActive: boolean) => {
@@ -662,7 +829,7 @@ export default function MlaRegister() {
                     placeholder="Enter full name"
                   />
                 </div> */}
-                                {selectedType === 'MLA' && (
+                {selectedType === 'MLA' && (
                   <>
                     <div>
                       <Label htmlFor="mlaName">MLA Name *</Label>
@@ -685,27 +852,6 @@ export default function MlaRegister() {
                     </div>
 
                     <div>
-                      <Label htmlFor="mlaContactNumber">MLA Contact Number *</Label>
-                      <Input
-                        id="mlaContactNumber"
-                        value={mlaForm.mlaContactNumber}
-                        onChange={(e) => setMlaForm(prev => ({ ...prev, mlaContactNumber: e.target.value }))}
-                        placeholder="Enter MLA contact number"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="mlaEmail">MLA Email *</Label>
-                      <Input
-                        id="mlaEmail"
-                        type="email"
-                        value={mlaForm.mlaEmail}
-                        onChange={(e) => setMlaForm(prev => ({ ...prev, mlaEmail: e.target.value }))}
-                        placeholder="Enter MLA email"
-                      />
-                    </div>
-
-                    <div>
                       <Label htmlFor="mlaTerm">MLA Term *</Label>
                       <Select 
                         value={mlaForm.mlaTerm?.toString() || ''} 
@@ -723,24 +869,25 @@ export default function MlaRegister() {
                         </SelectContent>
                       </Select>
                     </div>
+
                     <div>
-                  <Label htmlFor="district">District *</Label>
-                  <Select 
-                    value={(selectedType === 'MLA' ? mlaForm.districtId : mlcForm.districtId)?.toString() || ''} 
-                    onValueChange={(value) => handleDistrictChange(parseInt(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select district" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {districts.map((district) => (
-                        <SelectItem key={district.id} value={district.id.toString()}>
-                          {district.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                      <Label htmlFor="district">District *</Label>
+                      <Select 
+                        value={mlaForm.districtId?.toString() || ''} 
+                        onValueChange={(value) => handleDistrictChange(parseInt(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select district" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {districts.map((district) => (
+                            <SelectItem key={district.id} value={district.id.toString()}>
+                              {district.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
                     <div>
                       <Label htmlFor="constituency">Constituency *</Label>
@@ -774,16 +921,6 @@ export default function MlaRegister() {
                         value={mlcForm.mlcName}
                         onChange={(e) => setMlcForm(prev => ({ ...prev, mlcName: e.target.value }))}
                         placeholder="Enter MLC name"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="mlcCategory">MLC Category *</Label>
-                      <Input
-                        id="mlcCategory"
-                        value={mlcForm.mlcCategory}
-                        onChange={(e) => setMlcForm(prev => ({ ...prev, mlcCategory: e.target.value }))}
-                        placeholder="Enter MLC category"
                       />
                     </div>
 
@@ -828,13 +965,22 @@ export default function MlaRegister() {
                     </div>
 
                     <div>
-                      <Label htmlFor="mlcRegion">MLC Region *</Label>
-                      <Input
-                        id="mlcRegion"
-                        value={mlcForm.mlcRegion}
-                        onChange={(e) => setMlcForm(prev => ({ ...prev, mlcRegion: e.target.value }))}
-                        placeholder="Enter MLC region"
-                      />
+                      <Label htmlFor="district">District *</Label>
+                      <Select 
+                        value={mlcForm.districtId?.toString() || ''} 
+                        onValueChange={(value) => handleDistrictChange(parseInt(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select district" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {districts.map((district) => (
+                            <SelectItem key={district.id} value={district.id.toString()}>
+                              {district.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </>
                 )}
@@ -921,6 +1067,182 @@ export default function MlaRegister() {
                 >
                   {submitting ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : null}
                   Register {selectedType}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Edit Dialog */}
+          <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Edit {selectedUser?.type}</DialogTitle>
+                <DialogDescription>
+                  Update {selectedUser?.type} user details.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {selectedUser?.type === 'MLA' && (
+                  <>
+                    <div>
+                      <Label htmlFor="edit-mlaName">MLA Name *</Label>
+                      <Input
+                        id="edit-mlaName"
+                        value={mlaForm.mlaName}
+                        onChange={(e) => setMlaForm(prev => ({ ...prev, mlaName: e.target.value }))}
+                        placeholder="Enter MLA name"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-mlaParty">MLA Party *</Label>
+                      <Input
+                        id="edit-mlaParty"
+                        value={mlaForm.mlaParty}
+                        onChange={(e) => setMlaForm(prev => ({ ...prev, mlaParty: e.target.value }))}
+                        placeholder="Enter MLA party"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-mlaTerm">MLA Term *</Label>
+                      <Select 
+                        value={mlaForm.mlaTerm?.toString() || ''} 
+                        onValueChange={(value) => setMlaForm(prev => ({ ...prev, mlaTerm: parseInt(value) }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select MLA term" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {financialYears.map((fy) => (
+                            <SelectItem key={fy.id} value={fy.id.toString()}>
+                              {fy.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-constituency">Constituency *</Label>
+                      <Select 
+                        value={mlaForm.constituencyId?.toString() || ''} 
+                        onValueChange={(value) => setMlaForm(prev => ({ ...prev, constituencyId: parseInt(value) }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select constituency" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {constituencies.map((constituency) => (
+                            <SelectItem key={constituency.id} value={constituency.id.toString()}>
+                              {constituency.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
+
+                {selectedUser?.type === 'MLC' && (
+                  <>
+                    <div>
+                      <Label htmlFor="edit-mlcName">MLC Name *</Label>
+                      <Input
+                        id="edit-mlcName"
+                        value={mlcForm.mlcName}
+                        onChange={(e) => setMlcForm(prev => ({ ...prev, mlcName: e.target.value }))}
+                        placeholder="Enter MLC name"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-mlcContactNumber">MLC Contact Number *</Label>
+                      <Input
+                        id="edit-mlcContactNumber"
+                        value={mlcForm.mlcContactNumber}
+                        onChange={(e) => setMlcForm(prev => ({ ...prev, mlcContactNumber: e.target.value }))}
+                        placeholder="Enter MLC contact number"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-mlcEmail">MLC Email *</Label>
+                      <Input
+                        id="edit-mlcEmail"
+                        type="email"
+                        value={mlcForm.mlcEmail}
+                        onChange={(e) => setMlcForm(prev => ({ ...prev, mlcEmail: e.target.value }))}
+                        placeholder="Enter MLC email"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-mlcTerm">MLC Term *</Label>
+                      <Select 
+                        value={mlcForm.mlcTerm?.toString() || ''} 
+                        onValueChange={(value) => setMlcForm(prev => ({ ...prev, mlcTerm: parseInt(value) }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select MLC term" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {financialYears.map((fy) => (
+                            <SelectItem key={fy.id} value={fy.id.toString()}>
+                              {fy.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
+
+                <div>
+                  <Label htmlFor="edit-username">Username *</Label>
+                  <Input
+                    id="edit-username"
+                    value={selectedUser?.type === 'MLA' ? mlaForm.username : mlcForm.username}
+                    onChange={(e) => {
+                      if (selectedUser?.type === 'MLA') {
+                        setMlaForm(prev => ({ ...prev, username: e.target.value }));
+                      } else {
+                        setMlcForm(prev => ({ ...prev, username: e.target.value }));
+                      }
+                    }}
+                    placeholder="Enter username"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-email">Email *</Label>
+                  <Input
+                    id="edit-email"
+                    type="email"
+                    value={selectedUser?.type === 'MLA' ? mlaForm.email : mlcForm.email}
+                    onChange={(e) => {
+                      if (selectedUser?.type === 'MLA') {
+                        setMlaForm(prev => ({ ...prev, email: e.target.value }));
+                      } else {
+                        setMlcForm(prev => ({ ...prev, email: e.target.value }));
+                      }
+                    }}
+                    placeholder="Enter email address"
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleEditUser} 
+                  disabled={submitting}
+                >
+                  {submitting ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  Update {selectedUser?.type}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -1087,6 +1409,7 @@ export default function MlaRegister() {
                   <TableHead className="text-xs sm:text-sm">Sr No</TableHead>
                   <TableHead className="text-xs sm:text-sm">Type</TableHead>
                   <TableHead className="text-xs sm:text-sm">Name</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Username</TableHead>
                   <TableHead className="text-xs sm:text-sm">District</TableHead>
                   <TableHead className="text-xs sm:text-sm">Contact</TableHead>
                   <TableHead className="text-xs sm:text-sm">Status</TableHead>
@@ -1101,14 +1424,34 @@ export default function MlaRegister() {
                     <TableCell className="text-xs sm:text-sm">{getTypeBadge(user.type)}</TableCell>
                     <TableCell className="text-xs sm:text-sm">
                       <div>
-                        <div className="font-medium">{user.fullname}</div>
+                        <div className="font-medium">
+                          {user.type === 'MLA' ? user.mlaName : user.mlcName}
+                        </div>
                         <div className="text-gray-500">{user.email}</div>
+                        {user.type === 'MLA' && (
+                          <div className="text-xs text-blue-600">
+                            Party: {user.party}
+                          </div>
+                        )}
+                        {user.type === 'MLC' && (
+                          <div className="text-xs text-purple-600">
+                            Category: {user.category}
+                          </div>
+                        )}
                       </div>
+                    </TableCell>
+                    <TableCell className="text-xs sm:text-sm">
+                      <div className="font-mono text-xs">{user.username}</div>
                     </TableCell>
                     <TableCell className="text-xs sm:text-sm">{user.districtName}</TableCell>
                     <TableCell className="text-xs sm:text-sm">
                       <div>
-                        <div>{user.mobile}</div>
+                        <div>{user.contactNumber}</div>
+                        {user.type === 'MLA' && user.constituencyName && (
+                          <div className="text-xs text-gray-500">
+                            Constituency: {user.constituencyName}
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-xs sm:text-sm">{getStatusBadge(user.isActive)}</TableCell>
@@ -1117,6 +1460,42 @@ export default function MlaRegister() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end space-x-1 sm:space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              if (user.type === 'MLA') {
+                                const details = await getMLADetails(user.id);
+                                if (details) {
+                                  toast({
+                                    title: "MLA Details",
+                                    description: `MLA: ${details.mlaName}, Party: ${details.mlaParty}, Term: ${details.mlaTerm}`,
+                                    variant: "default"
+                                  });
+                                }
+                              } else {
+                                const details = await getMLCDetails(user.id);
+                                if (details) {
+                                  toast({
+                                    title: "MLC Details",
+                                    description: `MLC: ${details.mlcName}, Category: ${details.mlcCategory}, Term: ${details.mlcTerm}`,
+                                    variant: "default"
+                                  });
+                                }
+                              }
+                            } catch (err) {
+                              toast({
+                                title: "Error",
+                                description: "Failed to fetch user details",
+                                variant: "destructive"
+                              });
+                            }
+                          }}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Eye className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
+                        </Button>
                         {user.isActive ? (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -1183,7 +1562,44 @@ export default function MlaRegister() {
                             <UserCheck className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
                           </Button>
                         )}
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 w-8 p-0"
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setSelectedType(user.type);
+                            // Pre-populate form with user data
+                            if (user.type === 'MLA') {
+                              setMlaForm({
+                                fullname: user.mlaName,
+                                username: user.username,
+                                email: user.email,
+                                password: '',
+                                mobile: user.contactNumber,
+                                districtId: user.districtId,
+                                mlaName: user.mlaName,
+                                mlaParty: user.party,
+                                mlaTerm: user.term,
+                                constituencyId: user.constituencyId
+                              });
+                            } else {
+                              setMlcForm({
+                                fullname: user.mlcName,
+                                username: user.username,
+                                email: user.email,
+                                password: '',
+                                mobile: user.contactNumber,
+                                districtId: user.districtId,
+                                mlcName: user.mlcName,
+                                mlcContactNumber: user.contactNumber,
+                                mlcEmail: user.email,
+                                mlcTerm: user.term
+                              });
+                            }
+                            setEditDialogOpen(true);
+                          }}
+                        >
                           <Pencil className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
                         </Button>
                       </div>
@@ -1194,7 +1610,7 @@ export default function MlaRegister() {
               {filteredUsers.length === 0 && (
                 <TableFooter>
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       <div className="flex flex-col items-center space-y-2">
                         <Users className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
                         <p className="text-gray-500 text-sm sm:text-base">No users found</p>

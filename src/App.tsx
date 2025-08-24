@@ -123,11 +123,11 @@ const getRoleBasedRoutes = (user: any) => {
       return [
         <Route key="dashboard" path="/district-dashboard" element={<PrivateRoute><DistrictDashboard /></PrivateRoute>} />,
         <Route key="view-demands" path="/view-demands" element={<PrivateRoute><FundApproval /></PrivateRoute>} />,
-        <Route key="fund-allocation" path="/fund-allocation" element={<PrivateRoute><FundAllocation /></PrivateRoute>} />,
+        // <Route key="fund-allocation" path="/fund-allocation" element={<PrivateRoute><FundAllocation /></PrivateRoute>} />,
         <Route key="ia-master" path="/ia-master" element={<PrivateRoute><IaMaster /></PrivateRoute>} />,
         <Route key="mla-recommendation" path="/mla-mlc-recommendation" element={<PrivateRoute><ViewRecommendation /></PrivateRoute>} />,
-        <Route key="work-master" path="/work-master" element={<PrivateRoute><WorkMaster /></PrivateRoute>} />,
-        <Route key="reappropriation" path="/reappropriation" element={<PrivateRoute><ReturnFunds /></PrivateRoute>} />,
+        // <Route key="work-master" path="/work-master" element={<PrivateRoute><WorkMaster /></PrivateRoute>} />,
+        // <Route key="reappropriation" path="/reappropriation" element={<PrivateRoute><ReturnFunds /></PrivateRoute>} />,
         <Route key="reports" path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
       ];
 
