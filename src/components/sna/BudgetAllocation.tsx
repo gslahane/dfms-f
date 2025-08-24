@@ -957,14 +957,14 @@ const BudgetAllocation: React.FC = () => {
           <div className="flex items-center">
             <div className="p-2 bg-blue-100 rounded-lg">
               <Users className="w-5 h-5 text-blue-600" />
-                        </div>
+                </div>
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600">Total Allocations</p>
               <p className="text-2xl font-bold text-gray-900">
                 {filteredMLABudgets.length + filteredMLCBudgets.length + filteredHADPBudgets.length}
               </p>
-            </div>
-          </div>
+                </div>
+                </div>
         </motion.div>
         <motion.div
           className="border border-gray-200 rounded-sm bg-white p-4 shadow-sm"
@@ -975,12 +975,12 @@ const BudgetAllocation: React.FC = () => {
           <div className="flex items-center">
             <div className="p-2 bg-green-100 rounded-lg">
               <UserCheck className="w-5 h-5 text-green-600" />
-            </div>
+                </div>
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600">MLA Allocations</p>
               <p className="text-2xl font-bold text-green-600">{filteredMLABudgets.length}</p>
-            </div>
-          </div>
+                </div>
+                </div>
         </motion.div>
         <motion.div
           className="border border-gray-200 rounded-sm bg-white p-4 shadow-sm"
@@ -991,11 +991,11 @@ const BudgetAllocation: React.FC = () => {
           <div className="flex items-center">
             <div className="p-2 bg-purple-100 rounded-lg">
               <UserX className="w-5 h-5 text-purple-600" />
-            </div>
+                </div>
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600">MLC Allocations</p>
               <p className="text-2xl font-bold text-purple-600">{filteredMLCBudgets.length}</p>
-            </div>
+                </div>
           </div>
         </motion.div>
         <motion.div
@@ -1044,7 +1044,7 @@ const BudgetAllocation: React.FC = () => {
             >
               HADP Budget Allocation
             </Button>
-                </div>
+            </div>
         </CardContent>
       </Card>
 
@@ -1106,8 +1106,8 @@ const BudgetAllocation: React.FC = () => {
                   ))}
                 </SelectContent>
               </Select>
-                </div>
-                </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -1458,7 +1458,7 @@ const BudgetAllocation: React.FC = () => {
                       <SelectItem value="constituency">Select by Constituency</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                        </div>
               )}
 
               {/* Constituency (only for MLA with constituency mode) */}

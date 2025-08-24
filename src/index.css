@@ -98,7 +98,59 @@ All colors MUST be HSL.
   * {
     @apply border-border;
   }
-
+  
+  /* Custom animations for login page */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out;
+  }
+  
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  .shadow-3xl {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  }
+  
+  /* Responsive background sizing */
+  @media (max-width: 640px) {
+    .responsive-bg {
+      background-size: cover !important;
+    }
+  }
+  
+  @media (min-width: 641px) {
+    .responsive-bg {
+      background-size: contain !important;
+    }
+  }
+  
   body {
     @apply bg-background text-foreground;
   }

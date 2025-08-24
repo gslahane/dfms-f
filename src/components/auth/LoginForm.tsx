@@ -5,9 +5,10 @@ import { useAuth } from "@/contexts/AuthContext";
 
 interface LoginFormProps {
   onSuccess: () => void;
+  backgroundImage?: string; // Optional prop for background image
 }
 
-const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
+const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, backgroundImage = "/images/bg.png" }) => {
   const { login } = useAuth();
   const [formData, setFormData] = useState({ username: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
@@ -57,39 +58,79 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
 
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
+    <div 
+      className={`min-h-screen flex items-center justify-center relative px-4 py-8 ${
+        backgroundImage 
+          ? 'bg-gradient-to-br from-gray-50 to-gray-100' 
+          : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+      }`}
+      style={backgroundImage ? {
+        backgroundImage: `url("${backgroundImage}")`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      } : {}}
+    >
+      {/* Subtle overlay for better readability */}
+      {backgroundImage && (
+        <div className="absolute inset-0 bg-black/10"></div>
+      )}
+      
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md animate-fade-in"
+        className="bg-white/95 backdrop-blur-sm mt-5 border border-gray-200 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-sm relative z-10 transform transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl animate-fade-in"
         autoComplete="off"
       >
-        <div className="mb-8 text-center">
-          <div className="mx-auto w-14 h-14 flex items-center justify-center bg-primary rounded-full shadow">
-            <span className="font-bold text-2xl text-white">FMS</span>
+        <div className="mb-4 sm:mb-5 text-center">
+          {/* Maharashtra Government Logo */}
+          <div className="mx-auto w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 flex items-center justify-center bg-white rounded-full shadow-md mb-2 p-1">
+            <img 
+              src="/logo.png" 
+              alt="Maharashtra Government Logo" 
+              className="w-full h-full object-contain"
+            />
           </div>
-          <h2 className="mt-4 text-2xl font-extrabold text-gray-800">
-            Welcome Back
-          </h2>
-          <p className="text-gray-500 text-sm mt-1">
-            Please sign in to your account
-          </p>
+          
+          {/* e-SAMARTH Logo */}
+          {/* <div className="mx-auto w-24 h-10 flex items-center justify-center bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-md mb-3">
+            <span className="font-bold text-white text-sm tracking-wider">e-SAMARTH</span>
+          </div> */}
+          
+          {/* Slogan */}
+          {/* <div className="mb-3">
+            <p className="text-gray-600 text-xs leading-tight">
+              System For Allocation Of Anudan For Representatives of The House
+            </p>
+          </div> */}
+          
+          {/* Welcome Text */}
+          <div className="space-y-1">
+            <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-800">
+              PLANNING DEPARTMENT
+            </h2>
+            <p className="text-gray-500 text-xs sm:text-sm">
+              Sign in to your account
+            </p>
+          </div>
         </div>
 
         {error && (
-          <div className="mb-4 text-red-600 bg-red-50 border border-red-200 rounded p-2 text-sm text-center font-medium">
-            {error}
+          <div className="mb-3 p-2 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-md text-center transform transition-all duration-300 animate-shake">
+            <span className="text-red-700 font-medium text-xs">{error}</span>
           </div>
         )}
 
-        <div className="mb-5 relative">
-          <label className="block mb-1 font-semibold text-gray-700">
+        <div className="mb-3 sm:mb-4 relative group">
+          <label className="block mb-1 font-medium text-gray-700 text-xs sm:text-sm">
             Username
           </label>
-          <div className="flex items-center bg-gray-50 rounded px-3 border focus-within:ring-2 focus-within:ring-primary">
-            <User2 className="text-gray-400 mr-2" size={18} />
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 flex items-center pointer-events-none">
+              <User2 className="text-gray-400 group-focus-within:text-blue-500 transition-colors duration-200" size={14} />
+            </div>
             <input
               type="text"
-              className="bg-transparent flex-1 py-2 outline-none"
+              className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200 placeholder-gray-400 text-xs sm:text-sm"
               placeholder="Enter your username"
               value={formData.username}
               onChange={(e) =>
@@ -101,15 +142,17 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
           </div>
         </div>
 
-        <div className="mb-7 relative">
-          <label className="block mb-1 font-semibold text-gray-700">
+        <div className="mb-4 sm:mb-5 relative group">
+          <label className="block mb-1 font-medium text-gray-700 text-xs sm:text-sm">
             Password
           </label>
-          <div className="flex items-center bg-gray-50 rounded px-3 border focus-within:ring-2 focus-within:ring-primary">
-            <Lock className="text-gray-400 mr-2" size={18} />
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 flex items-center pointer-events-none">
+              <Lock className="text-gray-400 group-focus-within:text-blue-500 transition-colors duration-200" size={14} />
+            </div>
             <input
               type={showPassword ? "text" : "password"}
-              className="bg-transparent flex-1 py-2 outline-none"
+              className="w-full pl-8 sm:pl-10 pr-8 sm:pr-10 py-2 sm:py-2.5 bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200 placeholder-gray-400 text-xs sm:text-sm"
               placeholder="Enter your password"
               value={formData.password}
               onChange={(e) =>
@@ -121,24 +164,47 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               type="button"
               tabIndex={-1}
               onClick={() => setShowPassword((v) => !v)}
-              className="text-gray-400 hover:text-primary transition ml-1"
+              className="absolute inset-y-0 right-0 pr-2.5 sm:pr-3 flex items-center text-gray-400 hover:text-blue-500 transition-colors duration-200"
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
             </button>
           </div>
         </div>
 
         <button
           type="submit"
-          className="w-full py-2 bg-primary hover:bg-primary/90 text-white rounded-xl font-semibold text-lg shadow-md transition"
+          className="w-full py-2 sm:py-2.5 md:py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-md font-semibold text-sm sm:text-base shadow-md transform transition-all duration-200 hover:scale-[1.01] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
           disabled={loading}
         >
-          {loading ? "Logging in..." : "Login"}
+          {loading ? (
+            <div className="flex items-center justify-center space-x-1.5 sm:space-x-2">
+              <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              <span className="text-xs sm:text-sm">Signing in...</span>
+            </div>
+          ) : (
+            <span>Sign In</span>
+          )}
         </button>
 
-        <div className="mt-6 text-center text-xs text-gray-400">
-          &copy; {new Date().getFullYear()} FMS. All rights reserved.
+                <div className="mt-4 sm:mt-5 text-center">
+          <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent mb-2 sm:mb-3"></div>
+          <p className="text-xs sm:text-sm text-gray-500">
+            &copy; {new Date().getFullYear()} e-SAMARTH
+          </p>
+          <p className="text-xs sm:text-sm text-gray-400">
+            Maharashtra Government
+          </p>
+              {/* <div className="mx-auto w-24 h-10 flex items-center justify-center bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-md mb-3">
+             <span className="font-bold text-white text-sm tracking-wider">e-SAMARTH</span>
+           </div> */}
+           
+           {/* Slogan */}
+           <div className="mb-3 sm:mb-4">
+             <p className="text-gray-600 text-xs sm:text-sm leading-tight">
+               System For Allocation Of Anudan For Representatives of The House
+             </p>
+           </div>
         </div>
       </form>
     </div>

@@ -64,7 +64,6 @@ const HomeRedirect = () => {
   if (isLoading) return null;
 
   if (!user) return <Navigate to="/login" replace />;
-
   switch (user.role) {
     case 'IA_ADMIN':
       return <Navigate to="/iadashboard" replace />;
